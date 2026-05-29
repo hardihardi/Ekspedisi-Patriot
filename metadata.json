@@ -1,0 +1,10 @@
+{
+  "name": "Transmigrasi 3T",
+  "description": "Sistem Informasi Terpadu Pelaporan, Pendataan, dan Evaluasi Perkembangan Kawasan Transmigrasi Lokus 3T (Tertinggal, Terdepan, dan Terluar). Termasuk Manajemen Proyek, Rapat Koordinasi, dan Geografis.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,219 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and role information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "nip": { "type": "string" },
+        "instansi": { "type": "string" },
+        "role": { "type": "string", "enum": ["superadmin", "admin_pusat", "admin_daerah", "petugas_lapangan", "pimpinan"] },
+        "photoURL": { "type": "string" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Transmigration project in 3T area",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "location": { "type": "object", "properties": { "lat": { "type": "number" }, "lng": { "type": "number" } } },
+        "region": { "type": "string" },
+        "status": { "type": "string", "enum": ["Persiapan", "Pelaksanaan", "Pembinaan"] },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "status"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Project task or milestone",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["To-Do", "In Progress", "Done"] },
+        "assigneeId": { "type": "string" },
+        "dueDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["projectId", "title", "status"]
+    },
+    "Meeting": {
+      "title": "Meeting",
+      "description": "Coordination meeting",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "link": { "type": "string" },
+        "attendees": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["Scheduled", "Ongoing", "Completed"] }
+      },
+      "required": ["title", "date", "status"]
+    },
+    "Document": {
+      "title": "Document",
+      "description": "Cloud document metadata",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "url": { "type": "string" },
+        "folder": { "type": "string" },
+        "projectId": { "type": "string" },
+        "isSigned": { "type": "boolean" },
+        "signedAt": { "type": "string", "format": "date-time" },
+        "signedBy": { "type": "string" },
+        "version": { "type": "number" }
+      },
+      "required": ["name", "url", "folder"]
+    },
+    "Transmigrant": {
+      "title": "Transmigrant",
+      "description": "Transmigrant demography and data",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string" },
+        "nik": { "type": "string" },
+        "origin": { "type": "string" },
+        "destination": { "type": "string" },
+        "skills": { "type": "array", "items": { "type": "string" } },
+        "familyMembers": { "type": "number" },
+        "status": { "type": "string", "enum": ["Terdaftar", "Proses", "Ditempatkan"] }
+      },
+      "required": ["fullName", "nik", "status"]
+    },
+    "Log": {
+      "title": "Log",
+      "description": "System activity log",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "action": { "type": "string" },
+        "module": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "details": { "type": "string" }
+      },
+      "required": ["userId", "action", "timestamp"]
+    },
+    "Setting": {
+      "title": "Setting",
+      "description": "Application global settings",
+      "type": "object",
+      "properties": {
+        "appName": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "fonnteKey": { "type": "string" },
+        "smtpHost": { "type": "string" }
+      }
+    },
+    "Logistic": {
+      "title": "Logistic",
+      "description": "Logistics and aids distribution",
+      "type": "object",
+      "properties": {
+        "transmigrantId": { "type": "string" },
+        "itemName": { "type": "string" },
+        "quantity": { "type": "number" },
+        "status": { "type": "string", "enum": ["Pending", "Dikirim", "Diterima"] },
+        "date": { "type": "string", "format": "date" }
+      },
+      "required": ["transmigrantId", "itemName", "status"]
+    },
+    "Complaint": {
+      "title": "Complaint",
+      "description": "User and field worker reports",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "subject": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "status": { "type": "string", "enum": ["Open", "In Review", "Resolved"] },
+        "priority": { "type": "string" },
+        "imageUrl": { "type": "string" }
+      },
+      "required": ["userId", "subject", "status"]
+    },
+    "Infrastructure": {
+      "title": "Infrastructure",
+      "description": "3T area infrastructure project data",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "isPapua": { "type": "boolean" },
+        "kawasan": { "type": "string" },
+        "locationName": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "year": { "type": "number" },
+        "budget": { "type": "number" },
+        "fundingSource": { "type": "string" },
+        "status": { "type": "string", "enum": ["Rencana", "Proses", "Selesai", "Rehabilitasi"] },
+        "impact": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["name", "type", "isPapua", "status"]
+    },
+    "EconomyRecord": {
+      "title": "EconomyRecord",
+      "description": "Local community economic empowerment tracker",
+      "type": "object",
+      "properties": {
+        "kawasanName": { "type": "string" },
+        "region": { "type": "string" },
+        "isPapua": { "type": "boolean" },
+        "sector": { "type": "string", "enum": ["Pertanian & Perkebunan", "Perikanan & Kelautan", "Kerajinan & Kriya", "UMKM & Jasa", "Pariwisata & Kuliner"] },
+        "commodity": { "type": "string" },
+        "monthlyIncome": { "type": "number" },
+        "activeEntrepreneurs": { "type": "number" },
+        "marketAccess": { "type": "string" },
+        "assistanceProgram": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["kawasanName", "region", "isPapua", "sector", "commodity"]
+    },
+    "NotificationLog": {
+      "title": "NotificationLog",
+      "description": "Transmission & API sync records for notification channels",
+      "type": "object",
+      "properties": {
+        "event": { "type": "string", "enum": ["complaint_created", "complaint_updated", "document_signed", "meeting_created", "system_alert"] },
+        "payload": { "type": "object" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "channels": { "type": "object", "properties": { "wa": { "type": "boolean" }, "email": { "type": "boolean" } } },
+        "waEnabled": { "type": "boolean" },
+        "emailEnabled": { "type": "boolean" },
+        "recipientEmail": { "type": "string" },
+        "recipientPhone": { "type": "string" },
+        "subject": { "type": "string" },
+        "appName": { "type": "string" },
+        "instansiName": { "type": "string" }
+      },
+      "required": ["event", "payload", "timestamp"]
+    }
+  },
+  "firestore": {
+    "users": { "schema": "User", "description": "Users collection" },
+    "projects": { "schema": "Project", "description": "Projects collection" },
+    "tasks": { "schema": "Task", "description": "Tasks collection" },
+    "meetings": { "schema": "Meeting", "description": "Meetings collection" },
+    "documents": { "schema": "Document", "description": "Documents collection" },
+    "transmigrants": { "schema": "Transmigrant", "description": "Transmigrants collection" },
+    "logs": { "schema": "Log", "description": "System logs collection" },
+    "settings": { "schema": "Setting", "description": "Global settings collection" },
+    "logistics": { "schema": "Logistic", "description": "Logistics collection" },
+    "complaints": { "schema": "Complaint", "description": "Complaints collection" },
+    "infrastructures": { "schema": "Infrastructure", "description": "3T area infrastructures collection" },
+    "community_economy": { "schema": "EconomyRecord", "description": "Community economic tracking collection" },
+    "notification_logs": { "schema": "NotificationLog", "description": "Notification transmission and API sync logs" }
+  }
+}

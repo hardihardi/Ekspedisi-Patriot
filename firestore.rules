@@ -1,0 +1,207 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helper Functions ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return true;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && (
+        userId == request.auth.uid ||
+        (existing() != null && existing().email == request.auth.token.email) ||
+        (incoming() != null && incoming().email == request.auth.token.email)
+      );
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(roles) {
+      return isSignedIn() && (
+        !exists(/databases/$(database)/documents/users/$(request.auth.uid)) ||
+        getUserData().role in roles
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-+@.]+$');
+    }
+
+    // --- Collection Rules ---
+
+    // USERS
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.email is string
+            && data.role in ['superadmin', 'admin_pusat', 'admin_daerah', 'petugas_lapangan', 'pimpinan'];
+      }
+
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if (isSignedIn() && isValidId(userId) && isValidUser(incoming())) || hasRole(['superadmin', 'admin_pusat']);
+      allow update: if (isOwner(userId) && isValidUser(incoming()) && (incoming().role == existing().role || hasRole(['superadmin', 'admin_pusat'])))
+                  || hasRole(['superadmin', 'admin_pusat']);
+      allow delete: if hasRole(['superadmin', 'admin_pusat']);
+    }
+
+    // PROJECTS
+    match /projects/{projectId} {
+      function isValidProject(data) {
+        return data.name is string && data.name.size() > 0
+            && data.status in ['Persiapan', 'Pelaksanaan', 'Pembinaan'];
+      }
+
+      allow read: if isSignedIn();
+      allow create: if hasRole(['superadmin', 'admin_pusat']) 
+                  && isValidId(projectId)
+                  && isValidProject(incoming());
+      allow update: if hasRole(['superadmin', 'admin_pusat'])
+                  && isValidProject(incoming());
+      allow delete: if hasRole(['superadmin']);
+    }
+
+    // TASKS
+    match /tasks/{taskId} {
+      function isValidTask(data) {
+        return data.projectId is string 
+            && data.title is string 
+            && data.status in ['todo', 'in-progress', 'done', 'archived'];
+      }
+
+      allow read: if isSignedIn();
+      allow create: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah'])
+                  && isValidId(taskId)
+                  && isValidTask(incoming())
+                  && exists(/databases/$(database)/documents/projects/$(incoming().projectId));
+      allow update: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah'])
+                  && isValidTask(incoming());
+      allow delete: if hasRole(['superadmin', 'admin_pusat']);
+    }
+
+    // MEETINGS
+    match /meetings/{meetingId} {
+      function isValidMeeting(data) {
+        return data.title is string 
+            && data.status in ['Scheduled', 'Ongoing', 'Completed'];
+      }
+
+      allow read: if isSignedIn();
+      allow create: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah'])
+                  && isValidId(meetingId)
+                  && isValidMeeting(incoming());
+      allow update: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah', 'pimpinan'])
+                  && isValidMeeting(incoming());
+      allow delete: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah']);
+    }
+
+    // DOCUMENTS
+    match /documents/{documentId} {
+      function isValidDocument(data) {
+        return data.name is string 
+            && data.url is string;
+      }
+
+      allow read: if isSignedIn();
+      allow create: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah'])
+                  && isValidId(documentId)
+                  && isValidDocument(incoming());
+      allow update: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah', 'pimpinan'])
+                  && isValidDocument(incoming());
+      allow delete: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah', 'pimpinan']);
+    }
+
+    // TRANSMIGRANTS
+    match /transmigrants/{id} {
+      allow read: if isSignedIn();
+      allow create, update: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah', 'petugas_lapangan']);
+      allow delete: if hasRole(['superadmin']);
+    }
+
+    // LOGS (Audit Trail)
+    match /logs/{logId} {
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow read: if hasRole(['superadmin', 'admin_pusat']);
+    }
+
+    // SETTINGS
+    match /settings/{settingId} {
+      allow read: if true; // Publicly readable
+      allow write: if hasRole(['superadmin', 'admin_pusat']);
+    }
+
+    // LOGISTICS
+    match /logistics/{id} {
+      allow read: if isSignedIn();
+      allow write: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah', 'petugas_lapangan']);
+    }
+
+    // COMPLAINTS
+    match /complaints/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah']);
+      allow delete: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah']);
+    }
+
+    // INFRASTRUCTURES
+    match /infrastructures/{id} {
+      function isValidInfrastructure(data) {
+        return data.name is string && data.name.size() > 0
+            && data.type is string
+            && data.status in ['Rencana', 'Proses', 'Selesai', 'Rehabilitasi'];
+      }
+
+      allow read: if isSignedIn();
+      allow create: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah'])
+                  && isValidId(id)
+                  && isValidInfrastructure(incoming());
+      allow update: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah'])
+                  && isValidInfrastructure(incoming());
+      allow delete: if hasRole(['superadmin', 'admin_pusat']);
+    }
+
+    // COMMUNITY ECONOMY
+    match /community_economy/{id} {
+      function isValidEconomy(data) {
+        return data.kawasanName is string && data.kawasanName.size() > 0
+            && data.commodity is string && data.commodity.size() > 0
+            && data.sector in ['Pertanian & Perkebunan', 'Perikanan & Kelautan', 'Kerajinan & Kriya', 'UMKM & Jasa', 'Pariwisata & Kuliner'];
+      }
+
+      allow read: if isSignedIn();
+      allow create: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah', 'petugas_lapangan'])
+                  && isValidId(id)
+                  && isValidEconomy(incoming());
+      allow update: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah', 'petugas_lapangan'])
+                  && isValidEconomy(incoming());
+      allow delete: if hasRole(['superadmin']);
+    }
+
+    // NOTIFICATION LOGS
+    match /notification_logs/{logId} {
+      allow read: if isSignedIn();
+      allow create: if true;
+      allow update: if hasRole(['superadmin', 'admin_pusat']);
+      allow delete: if hasRole(['superadmin', 'admin_pusat']);
+    }
+  }
+}

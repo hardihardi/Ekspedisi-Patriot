@@ -1,0 +1,10 @@
+[
+  {
+    "file": "Complaints.tsx",
+    "btn": "<button onClick={() => handleOpenModal()} className=\"flex items-center justify-center gap-2 bg-[#696cff]text-white px-5 py-2.5 rounded-xl font-bold text-[13px] tracking-wide hover:bg-[#696cff] transition-all shadow-md shadow-[#696cff]/\">\n           <Plus className=\"w-4 h-4\" /> Buat Laporan Baru\n        </button>"
+  },
+  {
+    "file": "ProjectManagement.tsx",
+    "btn": "<button \n                             onClick={() => handleOpenModal(task)}\n                             className=\"text-slate-300 hover:text-[#696cff]hover:bg-[#696cff]p-1 rounded transition-colors\"\n                          >\n                            <Edit2 className=\"w-4 h-4\" />\n                          </button>"
+  }
+]
