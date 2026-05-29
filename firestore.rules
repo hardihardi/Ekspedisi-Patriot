@@ -203,5 +203,11 @@ service cloud.firestore {
       allow update: if hasRole(['superadmin', 'admin_pusat']);
       allow delete: if hasRole(['superadmin', 'admin_pusat']);
     }
+
+    // HOMEPAGE GALLERY
+    match /homepage_gallery/{id} {
+      allow read: if true; // Publicly readable for landing page gallery
+      allow write: if hasRole(['superadmin', 'admin_pusat']);
+    }
   }
 }

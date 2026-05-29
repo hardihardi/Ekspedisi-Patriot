@@ -199,6 +199,19 @@
         "instansiName": { "type": "string" }
       },
       "required": ["event", "payload", "timestamp"]
+    },
+    "HomepageGalleryItem": {
+      "title": "HomepageGalleryItem",
+      "description": "Gallery item shown on the landing homepage",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "uploadedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "imageUrl", "uploadedAt"]
     }
   },
   "firestore": {
@@ -214,6 +227,7 @@
     "complaints": { "schema": "Complaint", "description": "Complaints collection" },
     "infrastructures": { "schema": "Infrastructure", "description": "3T area infrastructures collection" },
     "community_economy": { "schema": "EconomyRecord", "description": "Community economic tracking collection" },
-    "notification_logs": { "schema": "NotificationLog", "description": "Notification transmission and API sync logs" }
+    "notification_logs": { "schema": "NotificationLog", "description": "Notification transmission and API sync logs" },
+    "homepage_gallery": { "schema": "HomepageGalleryItem", "description": "Dynamic homepage showcase gallery" }
   }
 }

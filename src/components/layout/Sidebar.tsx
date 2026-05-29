@@ -64,16 +64,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpe
         key={item.id}
         onClick={() => setActiveTab(item.id)}
         className={cn(
-          "w-full flex items-center justify-between px-3 py-[9px] rounded-lg transition-all text-[14.5px] font-medium my-0.5 outline-none font-sans border-none",
+          "w-full flex items-center justify-between px-3 py-[9px] rounded-lg transition-all text-[14.5px] font-medium my-0.5 outline-none font-sans border-none relative overflow-hidden",
           isActive 
             ? "bg-primary-600/10 text-primary-600 font-bold" 
             : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
         )}
       >
-        <div className="flex items-center gap-3">
-          <Icon className={cn("w-[20px] h-[20px]", isActive ? "text-primary-500" : "text-slate-400")} />
+        {isActive && (
+          <div className="absolute left-0 top-[20%] bottom-[20%] w-[4px] bg-primary-500 rounded-r-md" />
+        )}
+        <div className="flex items-center gap-3 pl-1">
+          <Icon className={cn("w-[19px] h-[19px]", isActive ? "text-primary-500" : "text-slate-450")} />
           <span>{localizedLabel}</span>
         </div>
+        {isActive && (
+          <ChevronRight className="w-3.5 h-3.5 text-primary-500 stroke-[3]" />
+        )}
       </button>
     );
   };

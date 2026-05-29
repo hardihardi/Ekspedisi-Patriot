@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 import { db } from '../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { useStore } from '../store/useStore';
 
 export function Homepage() {
@@ -18,6 +18,7 @@ export function Homepage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [dynamicContent, setDynamicContent] = useState<any>({});
+  const [galleryItems, setGalleryItems] = useState<any[]>([]);
   const { appSettings, language, setLanguage } = useStore();
   const isEn = language === 'en';
 
@@ -37,6 +38,13 @@ export function Homepage() {
         if (docSnap.exists()) {
           setDynamicContent(docSnap.data());
         }
+
+        const gallerySnap = await getDocs(collection(db, 'homepage_gallery'));
+        const itemsList: any[] = [];
+        gallerySnap.forEach(d => {
+          itemsList.push({ id: d.id, ...d.data() });
+        });
+        setGalleryItems(itemsList);
       } catch (err) {
         console.error('Failed to load homepage content:', err);
       }
@@ -49,6 +57,7 @@ export function Homepage() {
       nav_program: "Program",
       nav_lokus: "Area Lokus",
       nav_pilar: "Pilar",
+      nav_gallery: "Galeri Kegiatan",
       nav_complaint: "Pengaduan",
       nav_tte: "Cek TTE",
       nav_dashboard: "Dashboard",
@@ -111,6 +120,7 @@ export function Homepage() {
       nav_program: "Program",
       nav_lokus: "Locus Areas",
       nav_pilar: "Pillars",
+      nav_gallery: "Activity Gallery",
       nav_complaint: "Complaints",
       nav_tte: "Check TTE",
       nav_dashboard: "Dashboard",
@@ -273,6 +283,7 @@ export function Homepage() {
                 <a href="#tentang" className="text-slate-500 hover:text-primary-600 font-semibold transition-colors">{t.nav_program}</a>
                 <a href="#lokus" className="text-slate-500 hover:text-primary-600 font-semibold transition-colors">{t.nav_lokus}</a>
                 <a href="#pilar" className="text-slate-500 hover:text-primary-600 font-semibold transition-colors">{t.nav_pilar}</a>
+                <a href="#galeri" className="text-slate-500 hover:text-primary-600 font-semibold transition-colors">{t.nav_gallery}</a>
                 <button 
                   onClick={() => {
                     window.location.href = '/pengaduan';
@@ -357,6 +368,13 @@ export function Homepage() {
                   className="block px-3 py-3 text-base font-semibold text-slate-500 hover:text-primary-600 hover:bg-primary-600/5 rounded-lg"
                 >
                   {t.nav_pilar}
+                </a>
+                <a 
+                  href="#galeri" 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="block px-3 py-3 text-base font-semibold text-slate-500 hover:text-primary-600 hover:bg-primary-600/5 rounded-lg"
+                >
+                  {t.nav_gallery}
                 </a>
                 <button 
                   onClick={() => {
@@ -458,9 +476,10 @@ export function Homepage() {
               <div className="relative">
                 <div className="absolute -inset-4 bg-gradient-to-r from-primary-50 to-primary-100/30 rounded-[2rem] transform -rotate-3"></div>
                 <img 
-                  src="https://images.unsplash.com/photo-1596422846543-74c6e271a8c9?auto=format&fit=crop&q=80&w=1000" 
+                  src={dynamicContent.about_image_url || "https://images.unsplash.com/photo-1596422846543-74c6e271a8c9?auto=format&fit=crop&q=80&w=1000"} 
                   alt="Masyarakat Transmigran" 
-                  className="relative rounded-2xl shadow-xl z-10 border-4 border-white"
+                  className="relative rounded-2xl shadow-xl z-10 border-4 border-white object-cover aspect-video w-full"
+                  referrerPolicy="no-referrer"
                 />
                 <div className="absolute -bottom-6 -right-6 bg-white p-4 sm:p-6 rounded-xl shadow-[0_2px_12px_0_rgba(67,89,113,0.15)] z-20 max-w-[220px] sm:max-w-xs border-0">
                   <div className="flex items-center gap-3 sm:gap-4 mb-2">
@@ -578,7 +597,12 @@ export function Homepage() {
                   </ul>
                 </div>
                 <div className="order-1 md:order-2 h-[260px] sm:h-[450px] rounded-2xl overflow-hidden shadow-xl border-4 sm:border-8 border-white bg-gray-100 relative">
-                  <img src="https://images.unsplash.com/photo-1542274368-443d694d79aa?auto=format&fit=crop&q=80&w=1000" alt="Lokus Papua" className="w-full h-full object-cover" />
+                  <img 
+                    src={dynamicContent.papua_image_url || "https://images.unsplash.com/photo-1542274368-443d694d79aa?auto=format&fit=crop&q=80&w=1000"} 
+                    alt="Lokus Papua" 
+                    className="w-full h-full object-cover" 
+                    referrerPolicy="no-referrer"
+                  />
                 </div>
               </motion.div>
             )}
@@ -619,7 +643,12 @@ export function Homepage() {
                   </ul>
                 </div>
                 <div className="order-1 md:order-2 h-[260px] sm:h-[450px] rounded-2xl overflow-hidden shadow-xl border-4 sm:border-8 border-white bg-gray-100 relative">
-                  <img src="https://images.unsplash.com/photo-1590403332412-282490205af4?auto=format&fit=crop&q=80&w=1000" alt="Lokus Non Papua" className="w-full h-full object-cover" />
+                  <img 
+                    src={dynamicContent.non_papua_image_url || "https://images.unsplash.com/photo-1590403332412-282490205af4?auto=format&fit=crop&q=80&w=1000"} 
+                    alt="Lokus Non Papua" 
+                    className="w-full h-full object-cover" 
+                    referrerPolicy="no-referrer"
+                  />
                 </div>
               </motion.div>
             )}
@@ -645,6 +674,113 @@ export function Homepage() {
                 <h4 className="text-lg sm:text-xl font-bold text-slate-800 mb-3">{pillar.title}</h4>
                 <p className="text-slate-500 leading-relaxed text-xs sm:text-sm">{pillar.desc}</p>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 📸 Gallery Section - Interactive, Responsive & Dynamic */}
+      <section id="galeri" className="py-24 bg-white relative z-10 shadow-sm border-t border-slate-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <span className="bg-primary-50 text-primary-600 text-xs font-bold px-3 py-1 rounded-md uppercase tracking-wider mb-3 inline-block">
+              {isEn ? 'Activity & Progress Showcase' : 'Galeri Kegiatan & Dokumentasi'}
+            </span>
+            <h3 className="text-3xl md:text-4xl font-extrabold text-slate-800 mb-6 font-sans">
+              {isEn ? '3T Regional Progress Gallery' : 'Dokumentasi Perkembangan Kawasan 3T'}
+            </h3>
+            <p className="text-slate-500 text-base sm:text-lg">
+              {isEn 
+                ? 'Real developments on agriculture, infrastructure, logistics, and integrated transmigrant local livelihoods.' 
+                : 'Melihat langsung visualisasi pembangunan daerah perbatasan, lumbung pangan mandiri, dan integrasi sosio-kultural transmigran.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {(galleryItems.length > 0 ? galleryItems : [
+              {
+                title: isEn ? "Rice Harvesting in Merauke" : "Panen Padi Unggulan Merauke",
+                description: isEn ? "Locals showing local grain production." : "Masyarakat lokal memanen komoditas padi lumbung ketahanan pangan nasional.",
+                category: isEn ? "Agriculture" : "Pertanian",
+                imageUrl: "https://images.unsplash.com/photo-1595974482597-4b8da8879bc5?auto=format&fit=crop&q=80&w=800"
+              },
+              {
+                title: isEn ? "New School in Border Area" : "Pembangunan Sekolah Perbatasan Rakyat",
+                description: isEn ? "Establishing access to modern education." : "Sekolah dasar modern didirikan di pelosok perbatasan untuk mencerdaskan generasi 3T.",
+                category: isEn ? "Education" : "Pendidikan",
+                imageUrl: "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&q=80&w=800"
+              },
+              {
+                title: isEn ? "Distribution of Logistics" : "Penyaluran Bantuan Logistik Regional",
+                description: isEn ? "Reliable logistical drops targeting families." : "Bantuan pangan, medis, dan alat tani disalurkan di pulau-pulau kecil terluar.",
+                category: isEn ? "Logistics" : "Logistik",
+                imageUrl: "https://images.unsplash.com/photo-1594735803264-1594d214a1e9?auto=format&fit=crop&q=80&w=800"
+              },
+              {
+                title: isEn ? "Healthcare Outreach" : "Layanan Posyandu Keliling Berkala",
+                description: isEn ? "Doctors examining growth of children." : "Tenaga medis pusat dan daerah memberikan layanan kesehatan gratis bagi anak transmigran.",
+                category: isEn ? "Healthcare" : "Kesehatan",
+                imageUrl: "https://images.unsplash.com/photo-1584515906207-f818b77017fc?auto=format&fit=crop&q=80&w=800"
+              },
+              {
+                title: isEn ? "Solar Power Infrastructure" : "Sistem Penerangan Panel Surya Mandiri",
+                description: isEn ? "Installing clean energy grids on dark areas." : "Pemasangan pembangkit listrik surya untuk penerangan jalan desa dan suplai hunian.",
+                category: isEn ? "Infrastructure" : "Infrastruktur",
+                imageUrl: "https://images.unsplash.com/photo-1509391366360-2e959784a276?auto=format&fit=crop&q=80&w=800"
+              },
+              {
+                title: isEn ? "Primary Road Connectivity" : "Pembangunan Jalan Poros Desa",
+                description: isEn ? "Consolidating district and regional logistics." : "Menghubungkan pusat transmigran lokus terpencil dengan rute logistik utama nusantara.",
+                category: isEn ? "Infrastructure" : "Infrastruktur",
+                imageUrl: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80&w=800"
+              }
+            ]).map((item, idx) => (
+              <motion.div
+                key={item.id || idx}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: idx * 0.1 }}
+                className="group bg-slate-50 rounded-2xl overflow-hidden border border-slate-200/60 shadow-[0_2px_4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.08)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col h-full"
+              >
+                {/* Image holder with absolute overlay tag */}
+                <div className="relative aspect-video w-full overflow-hidden bg-slate-200 flex items-center justify-center">
+                  <span className="absolute top-4 left-4 z-20 bg-primary-600 text-white font-extrabold text-[10px] sm:text-xs px-3 py-1 rounded-full uppercase tracking-wider shadow-md">
+                    {item.category}
+                  </span>
+                  <img
+                    src={item.imageUrl}
+                    alt={item.title}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    referrerPolicy="no-referrer"
+                  />
+                  {/* Subtle black overlay on hover */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/45 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                </div>
+
+                {/* Info Text block */}
+                <div className="p-6 flex-1 flex flex-col justify-between">
+                  <div>
+                    <h4 className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight mb-2 group-hover:text-primary-600 transition-colors">
+                      {item.title}
+                    </h4>
+                    <p className="text-slate-500 text-xs sm:text-sm leading-relaxed mb-4">
+                      {item.description}
+                    </p>
+                  </div>
+                  
+                  {/* Footer details */}
+                  <div className="flex items-center justify-between border-t border-slate-200/50 pt-4 mt-auto">
+                    <span className="text-[10px] sm:text-xs font-bold text-slate-400 font-mono flex items-center gap-1.5 shadow-none">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                      {isEn ? 'Verified Locus Status' : 'Terverifikasi Kementerian'}
+                    </span>
+                    <span className="text-[10px] sm:text-xs text-primary-500 font-bold hover:underline cursor-default flex items-center gap-1">
+                      {isEn ? 'Progress Live' : 'Progress Lapangan'}
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
             ))}
           </div>
         </div>

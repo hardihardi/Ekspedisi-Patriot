@@ -38,6 +38,10 @@ Aplikasi ini menggunakan teknologi real-time dengan integrasi database *NoSQL* u
 *   **SMTP MailSender:** Konfigurasi kustom email domain untuk mengirim pembaruan aplikasi langsung dari dashboard pengaturan.
 *   **WhatsApp Gateway (Fonnte):** Mengirimkan notifikasi WhatsApp instan untuk resi pengaduan masyarakat atau pelaporan lapangan bagi masyarakat tanpa akses web interaktif terus-menerus.
 
+### 7. 🖼️ Modul Manajemen Gambar & Galeri Dokumentasi (CMS)
+*   **Image Management:** Memungkinkan penyesuaian foto latar untuk Bagian Depan (About Us, Lokus Papua, dan Lokus Non-Papua) melalui dashboard admin dengan kompresi berbasis Canvas instan sebelum disimpan untuk menghemat kuota Firestore.
+*   **Galeri Interaktif & Responsif:** Showcase galeri dinamis terintegrasi di beranda publik. Admin dapat menambahkan foto proyek baru, mengategorikannya, dan menyertakan deskripsi lengkap secara langsung.
+
 ---
 
 ## 🛠️ Stack Teknologi (Tech Stack)
