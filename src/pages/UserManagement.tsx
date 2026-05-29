@@ -326,19 +326,19 @@ export const UserManagement: React.FC<UserManagementProps> = ({ setActiveTab }) 
           >
             <div className="grid grid-cols-1 gap-4">
               <div className="bg-white rounded-xl shadow-[0_2px_6px_0_rgba(67,89,113,0.12)] border-none overflow-hidden flex flex-col">
-                <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-transparent focus-within:bg-white focus-within:border-primary-500 focus-within:shadow-[0_0_0_0.2rem_rgba(105,108,255,0.25)] transition-all w-full sm:w-80">
-                    <Search className="w-3.5 h-3.5 text-slate-400" />
-                    <input value={search} onChange={e => setSearch(e.target.value)} type="text" placeholder="Cari user (nama atau email)..." className="bg-transparent border-none outline-none text-[14px] text-slate-600 focus:ring-0 w-full py-0.5" />
+                <div className="p-4 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div className="flex items-center gap-2 bg-slate-50 px-3.5 py-2.5 rounded-xl border border-slate-200 focus-within:bg-white focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all w-full lg:w-80 shrink-0 shadow-2xs">
+                    <Search className="w-4 h-4 text-slate-400" />
+                    <input value={search} onChange={e => setSearch(e.target.value)} type="text" placeholder="Cari user (nama atau email)..." className="bg-transparent border-none outline-none text-[13px] font-semibold text-slate-700 focus:ring-0 w-full py-0.5 placeholder:font-normal placeholder-slate-400" />
                   </div>
-                  <div className="flex gap-2 w-full sm:w-auto overflow-x-auto no-scrollbar">
-                     <button onClick={exportPDF} className="flex items-center gap-1.5 px-3 py-1.5 bg-white border-0 shadow-[0_2px_6px_0_rgba(67,89,113,0.12)] rounded-lg text-[13px] font-medium text-slate-600  hover:bg-slate-50 shrink-0">
-                       <Download className="w-3.5 h-3.5" /> PDF
+                  <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 w-full lg:w-auto">
+                     <button onClick={exportPDF} className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] font-semibold text-slate-605 shadow-2xs hover:bg-slate-50 transition-all cursor-pointer">
+                       <Download className="w-3.5 h-3.5 text-slate-450" /> PDF
                      </button>
-                     <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-white border-0 shadow-[0_2px_6px_0_rgba(67,89,113,0.12)] rounded-lg text-[13px] font-medium text-slate-600  hover:bg-slate-50 shrink-0">
-                       <Download className="w-3.5 h-3.5" /> CSV
+                     <button onClick={exportCSV} className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] font-semibold text-slate-605 shadow-2xs hover:bg-slate-50 transition-all cursor-pointer">
+                       <Download className="w-3.5 h-3.5 text-slate-450" /> CSV
                      </button>
-                     <select value={filterRole} onChange={e => setFilterRole(e.target.value)} className="flex items-center gap-1.5 px-3 py-1.5 bg-white border-0 shadow-[0_2px_6px_0_rgba(67,89,113,0.12)] rounded-lg text-[13px] font-medium text-slate-600  hover:bg-slate-50 shrink-0 outline-none">
+                     <select value={filterRole} onChange={e => setFilterRole(e.target.value)} className="w-full sm:w-auto px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] font-semibold text-slate-705 outline-none focus:border-primary-500 shadow-2xs cursor-pointer">
                        <option value="">Semua Role</option>
                        <option value="superadmin">Superadmin</option>
                        <option value="admin_pusat">Admin Pusat</option>
@@ -346,8 +346,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({ setActiveTab }) 
                        <option value="petugas_lapangan">Petugas Lapangan</option>
                      </select>
                     {canEdit && (
-                      <button onClick={() => handleOpenModal()} className="flex items-center justify-center gap-2 bg-primary-600 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-lg text-xs md:text-[13px] font-semibold tracking-wide hover:bg-primary-700 transition-all shadow-[0_0.125rem_0.25rem_0_rgba(105,108,255,0.4)] active:scale-95">
-                        <UserPlus className="w-3.5 h-3.5" /> Tambah User
+                      <button onClick={() => handleOpenModal()} className="col-span-2 sm:col-span-1 flex items-center justify-center gap-2 bg-primary-600 text-white px-4 py-2.5 rounded-xl text-xs sm:text-[13px] font-semibold tracking-wide hover:bg-primary-700 transition-all shadow-[0_4px_12px_rgba(105,108,255,0.25)] cursor-pointer">
+                        <UserPlus className="w-4 h-4" /> Tambah User
                       </button>
                     )}
                   </div>
@@ -444,22 +444,22 @@ export const UserManagement: React.FC<UserManagementProps> = ({ setActiveTab }) 
             exit={{ opacity: 0, y: -10 }}
             className="bg-white rounded-xl shadow-[0_2px_6px_0_rgba(67,89,113,0.12)] border-none overflow-hidden"
           >
-             <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-white flex-wrap gap-4">
-               <div className="flex items-center gap-4 w-full sm:w-auto flex-wrap sm:flex-nowrap">
-                 <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-transparent focus-within:bg-white focus-within:border-primary-500 focus-within:shadow-[0_0_0_0.2rem_rgba(105,108,255,0.25)] transition-all w-full sm:w-80 shrink-0">
+             <div className="p-4 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between bg-white gap-4">
+               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+                 <div className="flex items-center gap-2 bg-slate-50 px-3.5 py-2.5 rounded-xl border border-slate-200 focus-within:bg-white focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all w-full sm:w-80 shrink-0 shadow-2xs">
                    <Search className="w-3.5 h-3.5 text-slate-400" />
-                   <input value={search} onChange={e => setSearch(e.target.value)} type="text" placeholder="Cari log..." className="bg-transparent border-none outline-none text-[14px] text-slate-600 focus:ring-0 w-full py-0.5" />
+                   <input value={search} onChange={e => setSearch(e.target.value)} type="text" placeholder="Cari log..." className="bg-transparent border-none outline-none text-[13px] font-semibold text-slate-705 focus:ring-0 w-full py-0.5 placeholder:font-normal placeholder-slate-400" />
                  </div>
-                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                   <button onClick={exportPDF} className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white border-0 shadow-[0_2px_6px_0_rgba(67,89,113,0.12)] rounded-lg text-[13px] font-medium text-slate-600  hover:bg-slate-50 shrink-0">
+                 <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
+                   <button onClick={exportPDF} className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] font-semibold text-slate-605 shadow-2xs hover:bg-slate-50 transition-all cursor-pointer">
                      <Download className="w-3.5 h-3.5" /> PDF
                    </button>
-                   <button onClick={exportCSV} className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white border-0 shadow-[0_2px_6px_0_rgba(67,89,113,0.12)] rounded-lg text-[13px] font-medium text-slate-600  hover:bg-slate-50 shrink-0">
+                   <button onClick={exportCSV} className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] font-semibold text-slate-605 shadow-2xs hover:bg-slate-50 transition-all cursor-pointer">
                      <Download className="w-3.5 h-3.5" /> CSV
                    </button>
                  </div>
                </div>
-               <div className="text-[13px] font-medium text-slate-500 w-full sm:w-auto">Total: {paginatedLogs.length} Data</div>
+               <div className="text-[13px] font-semibold text-slate-500 w-full sm:w-auto shrink-0 bg-slate-50 px-3.5 py-2.5 rounded-xl border border-slate-200 text-center sm:text-left">Total: {paginatedLogs.length} Data</div>
              </div>
              <div className="overflow-x-auto">
                <table className="w-full text-left min-w-[700px]">

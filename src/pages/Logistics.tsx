@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Box, Truck, CheckCircle2, Clock, Search, Filter, Plus, Package, Edit2, Trash2, X, BarChart2 } from 'lucide-react';
+import { Box, Truck, CheckCircle2, Clock, Search, Filter, Plus, Package, Edit2, Trash2, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, query, onSnapshot, addDoc, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { useStore } from '../store/useStore';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Papa from 'papaparse';
@@ -143,22 +142,30 @@ export const Logistics: React.FC = () => {
     }
   };
 
-  const [filterMonth, setFilterMonth] = useState('');
-  const [filterYear, setFilterYear] = useState('');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+  const [filterCategory, setFilterCategory] = useState('Semua');
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 8;
 
   const fullyFilteredItems = items.filter(c => {
-     let match = c.transmigrant.toLowerCase().includes(search.toLowerCase()) || 
-                 c.item.toLowerCase().includes(search.toLowerCase()) ||
-                 c.category.toLowerCase().includes(search.toLowerCase());
-     if (c.distributionDate && match) {
-       const dateParts = c.distributionDate.split('-');
-       if (dateParts.length >= 2) {
-         if (filterYear && dateParts[0] !== filterYear) match = false;
-         if (filterMonth && parseInt(dateParts[1], 10).toString() !== filterMonth) match = false;
-       }
+     let match = c.transmigrant?.toLowerCase().includes(search.toLowerCase()) || 
+                 c.item?.toLowerCase().includes(search.toLowerCase()) ||
+                 c.category?.toLowerCase().includes(search.toLowerCase());
+     
+     // Category Filter
+     if (filterCategory !== 'Semua' && c.category !== filterCategory) {
+       match = false;
      }
+
+     // Start/End Date Filter
+     if (c.distributionDate && match) {
+       if (filterStartDate && c.distributionDate < filterStartDate) match = false;
+       if (filterEndDate && c.distributionDate > filterEndDate) match = false;
+     } else if ((filterStartDate || filterEndDate) && !c.distributionDate) {
+       match = false;
+     }
+     
      return match;
   });
 
@@ -167,7 +174,52 @@ export const Logistics: React.FC = () => {
 
   useEffect(() => {
      setCurrentPage(1);
-  }, [search, filterMonth, filterYear]);
+  }, [search, filterStartDate, filterEndDate, filterCategory]);
+
+  const renderPageNumbers = () => {
+    const pages = [];
+    const maxNeighbours = 1;
+    const leftBound = Math.max(2, currentPage - maxNeighbours);
+    const rightBound = Math.min(totalPages - 1, currentPage + maxNeighbours);
+
+    pages.push(1);
+
+    if (leftBound > 2) {
+      pages.push('ellipsis-left');
+    }
+
+    for (let i = leftBound; i <= rightBound; i++) {
+      pages.push(i);
+    }
+
+    if (rightBound < totalPages - 1) {
+      pages.push('ellipsis-right');
+    }
+
+    if (totalPages > 1) {
+      pages.push(totalPages);
+    }
+
+    return pages.map((p, index) => {
+      if (typeof p === 'string') {
+        return <span key={`ellipsis-${index}`} className="text-slate-400 px-1 font-medium">...</span>;
+      }
+      return (
+        <button
+          key={p}
+          onClick={() => setCurrentPage(p)}
+          className={cn(
+            "w-8 h-8 text-xs sm:text-sm font-bold rounded-lg transition-all border shrink-0",
+            currentPage === p 
+              ? "bg-primary-600 text-white border-primary-600 shadow-xs" 
+              : "border-slate-200 text-slate-650 hover:bg-slate-50 cursor-pointer"
+          )}
+        >
+          {p}
+        </button>
+      );
+    });
+  };
 
   const exportPDF = () => {
     const pdfDoc = new jsPDF();
@@ -204,34 +256,6 @@ export const Logistics: React.FC = () => {
     link.click();
     document.body.removeChild(link);
   };
-
-  const jadupStats = useMemo(() => {
-    const jadupItems = items.filter(item => item.category === 'Jaminan Hidup (Jadup)');
-    const monthlyData: Record<string, { monthKey: string, monthValue: number }> = {};
-
-    jadupItems.forEach(item => {
-      if (item.distributionDate) {
-        const date = new Date(item.distributionDate);
-        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        
-        if (!monthlyData[monthKey]) {
-          monthlyData[monthKey] = { monthKey, monthValue: 0 };
-        }
-        monthlyData[monthKey].monthValue += (Number(item.qty) || 0);
-      }
-    });
-
-    const sortedData = Object.values(monthlyData).sort((a, b) => a.monthKey.localeCompare(b.monthKey));
-    
-    return sortedData.map(data => {
-      const parts = data.monthKey.split('-');
-      const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1);
-      return {
-        name: date.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }),
-        jumlah: data.monthValue
-      };
-    });
-  }, [items]);
 
   return (
     <div className="space-y-6">
@@ -418,77 +442,30 @@ export const Logistics: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border-0 shadow-[0_2px_6px_0_rgba(67,89,113,0.1)] p-5 md:p-6 flex flex-col">
-          <div className="flex items-center gap-2.5 mb-6 border-b border-slate-50 pb-4">
-             <div className="w-8 h-8 rounded-lg bg-primary-100/60 flex items-center justify-center text-primary-500">
-                <BarChart2 className="w-4 h-4" />
-             </div>
-             <div>
-                <h3 className="text-[15px] font-bold text-slate-700">Distribusi Jaminan Hidup (Jadup) per Bulan</h3>
-                <p className="text-[11.5px] text-slate-400 font-semibold">Tercatat untuk tahun operasional berjalan nasional</p>
-             </div>
-          </div>
-          {jadupStats.length > 0 ? (
-            <div className="h-72 w-full">
-               <ResponsiveContainer width="100%" height="100%">
-                 <BarChart data={jadupStats} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#FAFAFA" />
-                   <XAxis 
-                      dataKey="name" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fill: '#94A3B8', fontSize: 11, fontWeight: 650 }} 
-                      dy={10} 
-                   />
-                   <YAxis 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fill: '#94A3B8', fontSize: 11, fontWeight: 650 }} 
-                      allowDecimals={false}
-                   />
-                   <Tooltip 
-                      cursor={{ fill: 'rgba(105, 108, 255, 0.04)' }} 
-                      contentStyle={{ borderRadius: '12px', border: '1px solid #FAFAFA', boxShadow: '0 4px 12px rgba(67, 89, 113, 0.15)', padding: '12px 16px' }}
-                      labelStyle={{ fontWeight: 'bold', color: '#334155', marginBottom: '4px' }}
-                      itemStyle={{ color: 'var(--theme-primary-500)', fontWeight: 'bold' }}
-                   />
-                   <Bar 
-                     dataKey="jumlah" 
-                     fill="var(--theme-primary-500)" 
-                     radius={[4, 4, 0, 0]} 
-                     barSize={32} 
-                     name="Jumlah Bantuan" 
-                     animationDuration={1500} 
-                   />
-                 </BarChart>
-               </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="h-48 w-full flex items-center justify-center border border-dashed border-slate-100 rounded-xl">
-               <p className="text-slate-400 font-bold text-xs">Belum ada penyaluran Jadup yang terdata di database.</p>
-            </div>
-          )}
-      </div>
-
       <div className="bg-white rounded-xl border-0 shadow-[0_2px_6px_0_rgba(67,89,113,0.1)] overflow-hidden flex flex-col">
-        <div className="p-5 border-b border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-white">
-           <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-             <div className="flex items-center gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-200 focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all w-full sm:w-80">
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white">
+           <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 w-full">
+             <div className="flex items-center gap-2 bg-white px-3.5 py-2.5 rounded-xl border border-slate-200 focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all w-full lg:w-80 shrink-0 shadow-2xs">
                <Search className="w-4 h-4 text-slate-400" />
-               <input value={search} onChange={e => setSearch(e.target.value)} type="text" placeholder="Cari nama, item, kategori bantuan..." className="bg-transparent border-none outline-none text-[13px] font-semibold text-slate-700 focus:ring-0 w-full py-0.5" />
+               <input value={search} onChange={e => setSearch(e.target.value)} type="text" placeholder="Cari nama, item, kategori bantuan..." className="bg-transparent border-none outline-none text-[13px] font-semibold text-slate-700 focus:ring-0 w-full py-0.5 placeholder:font-normal" />
              </div>
-             <select value={filterMonth} onChange={e => setFilterMonth(e.target.value)} className="w-full sm:w-auto px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] font-semibold text-slate-600 outline-none focus:border-primary-500 cursor-pointer">
-               <option value="">Semua Bulan</option>
-               {Array.from({length: 12}, (_, i) => (<option key={i+1} value={String(i+1)}>{new Date(0, i).toLocaleString('id-ID', {month: 'long'})}</option>))}
-             </select>
-             <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className="w-full sm:w-auto px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] font-semibold text-slate-600 outline-none focus:border-primary-500 cursor-pointer">
-               <option value="">Semua Tahun</option>
-               <option value="2024">2024</option>
-               <option value="2025">2025</option>
-               <option value="2026">2026</option>
-             </select>
+             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full">
+               <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] font-semibold text-slate-600 outline-none focus:border-primary-500 cursor-pointer shadow-2xs">
+                 <option value="Semua">Semua Kategori</option>
+                 <option value="Jaminan Hidup (Jadup)">Jaminan Hidup (Jadup)</option>
+                 <option value="Alat Pertanian">Alat Pertanian</option>
+               </select>
+               <div className="flex items-center justify-between gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2.5 w-full shadow-2xs">
+                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Start</span>
+                 <input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="bg-transparent border-none outline-none text-xs text-slate-700 font-bold cursor-pointer w-full text-right lg:text-left focus:ring-0 min-w-[100px]" />
+               </div>
+               <div className="flex items-center justify-between gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2.5 w-full shadow-2xs">
+                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">End</span>
+                 <input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="bg-transparent border-none outline-none text-xs text-slate-700 font-bold cursor-pointer w-full text-right lg:text-left focus:ring-0 min-w-[100px]" />
+               </div>
+             </div>
            </div>
-           <div className="text-[12.5px] font-bold text-primary-500 bg-primary-50/50 px-3.5 py-1.5 border border-primary-100 rounded-lg whitespace-nowrap">
+           <div className="text-[12.5px] font-bold text-primary-500 bg-primary-50/50 px-3.5 py-1.5 border border-primary-100 rounded-lg whitespace-nowrap self-start lg:self-center">
              Terfilter: {fullyFilteredItems.length} baris
            </div>
         </div>
@@ -552,24 +529,29 @@ export const Logistics: React.FC = () => {
               </div>
             )}
             {totalPages > 1 && (
-              <div className="mt-6 flex items-center justify-center gap-2 pb-4">
-                 <button 
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                 >
-                   Prev
-                 </button>
-                 <span className="text-sm font-medium text-slate-600 px-2">
-                   Hal {currentPage} dari {totalPages}
-                 </span>
-                 <button 
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                 >
-                   Next
-                 </button>
+              <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-250/20 shadow-xs w-full">
+                <div className="text-xs sm:text-sm text-slate-500 font-medium">
+                  Menampilkan {Math.min(fullyFilteredItems.length, (currentPage - 1) * ITEMS_PER_PAGE + 1)} sampai {Math.min(fullyFilteredItems.length, currentPage * ITEMS_PER_PAGE)} dari {fullyFilteredItems.length} data
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button 
+                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                     disabled={currentPage === 1}
+                     className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                     Sebelumnya
+                  </button>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {renderPageNumbers()}
+                  </div>
+                  <button 
+                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                     disabled={currentPage === totalPages}
+                     className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                     Berikutnya
+                  </button>
+                </div>
               </div>
             )}
         </div>

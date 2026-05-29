@@ -152,9 +152,15 @@ export const Transmigrants: React.FC = () => {
     
     try {
       if (editingItem?.id) {
-        await updateDoc(doc(db, 'transmigrants', editingItem.id), { ...formData });
+        await updateDoc(doc(db, 'transmigrants', editingItem.id), { 
+          ...formData,
+          createdAt: (editingItem as any).createdAt || new Date().toISOString()
+        });
       } else {
-        await addDoc(collection(db, 'transmigrants'), formData);
+        await addDoc(collection(db, 'transmigrants'), {
+          ...formData,
+          createdAt: new Date().toISOString()
+        });
       }
       setIsModalOpen(false);
     } catch (error) {
@@ -172,8 +178,9 @@ export const Transmigrants: React.FC = () => {
     }
   };
 
-  const [filterMonth, setFilterMonth] = useState('');
-  const [filterYear, setFilterYear] = useState('');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+  const [filterCategory, setFilterCategory] = useState('Semua');
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 9;
 
@@ -182,14 +189,28 @@ export const Transmigrants: React.FC = () => {
     const matchSearch = tr.fullName.toLowerCase().includes(search.toLowerCase()) || tr.nik.includes(search);
     const matchStatus = filterStatus === 'Semua' || tr.status === filterStatus;
     if (!matchSearch || !matchStatus) match = false;
-    // Data might need a createdAt field added to support month/year strictly, 
-    // but we can map if it exists, or just ignore if it doesn't.
-    // For now we assume tr.createdAt exists or we fall back.
+
+    // Filter by Kawasan Category 
+    const locus = geographies.find(g => `${g.name} (${g.region})` === tr.destination || g.name === tr.destination || tr.destination?.includes(g.name));
+    const matchCategory = filterCategory === 'Semua' || (locus && locus.category === filterCategory);
+    if (!matchCategory) match = false;
+
+    // Filter by Start/End Date programmatially
     const trAny = tr as any;
-    if (trAny.createdAt) {
-      const date = new Date(trAny.createdAt);
-      if (filterMonth && (date.getMonth() + 1).toString() !== filterMonth) match = false;
-      if (filterYear && date.getFullYear().toString() !== filterYear) match = false;
+    const rawDate = trAny.createdAt || trAny.date;
+    if (rawDate) {
+      const dVal = new Date(rawDate);
+      if (filterStartDate) {
+        const start = new Date(filterStartDate);
+        if (dVal < start) match = false;
+      }
+      if (filterEndDate) {
+        const end = new Date(filterEndDate);
+        end.setHours(23, 59, 59, 999);
+        if (dVal > end) match = false;
+      }
+    } else if (filterStartDate || filterEndDate) {
+      match = false;
     }
     return match;
   });
@@ -235,7 +256,52 @@ export const Transmigrants: React.FC = () => {
 
   useEffect(() => {
      setCurrentPage(1);
-  }, [search, filterStatus, filterMonth, filterYear]);
+  }, [search, filterStatus, filterStartDate, filterEndDate, filterCategory]);
+
+  const renderPageNumbers = () => {
+    const pages = [];
+    const maxNeighbours = 1;
+    const leftBound = Math.max(2, currentPage - maxNeighbours);
+    const rightBound = Math.min(totalPages - 1, currentPage + maxNeighbours);
+
+    pages.push(1);
+
+    if (leftBound > 2) {
+      pages.push('ellipsis-left');
+    }
+
+    for (let i = leftBound; i <= rightBound; i++) {
+      pages.push(i);
+    }
+
+    if (rightBound < totalPages - 1) {
+      pages.push('ellipsis-right');
+    }
+
+    if (totalPages > 1) {
+      pages.push(totalPages);
+    }
+
+    return pages.map((p, index) => {
+      if (typeof p === 'string') {
+        return <span key={`ellipsis-${index}`} className="text-slate-400 px-1 font-medium">...</span>;
+      }
+      return (
+        <button
+          key={p}
+          onClick={() => setCurrentPage(p)}
+          className={cn(
+            "w-8 h-8 text-xs sm:text-sm font-bold rounded-lg transition-all border shrink-0",
+            currentPage === p 
+              ? "bg-primary-600 text-white border-primary-600 shadow-xs" 
+              : "border-slate-200 text-slate-600 hover:bg-slate-50 cursor-pointer"
+          )}
+        >
+          {p}
+        </button>
+      );
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -439,32 +505,38 @@ export const Transmigrants: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-xl border-0 shadow-[0_2px_6px_0_rgba(67,89,113,0.12)] overflow-hidden flex flex-col">
-        <div className="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white">
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
-            <div className="flex items-center gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-200 focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all w-full sm:w-80">
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 w-full">
+            <div className="flex items-center gap-2 bg-white px-3.5 py-2.5 rounded-xl border border-slate-200 focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all w-full lg:w-80 shrink-0 shadow-2xs">
               <Search className="w-4 h-4 text-slate-400" />
-              <input value={search} onChange={e => setSearch(e.target.value)} type="text" placeholder={isEn ? "Search NIK or Name..." : "Cari NIK atau Nama..."} className="bg-transparent border-none outline-none text-[13px] font-medium text-slate-700 placeholder-slate-400 w-full py-0.5" />
+              <input value={search} onChange={e => setSearch(e.target.value)} type="text" placeholder={isEn ? "Search NIK or Name..." : "Cari NIK atau Nama..."} className="bg-transparent border-none outline-none text-[13px] font-medium text-slate-700 placeholder-slate-400 w-full py-0.5 focus:ring-0" />
             </div>
-            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-               <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] font-semibold text-slate-600 outline-none focus:border-primary-500 cursor-pointer">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:flex lg:flex-wrap items-center gap-2 w-full">
+               <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="w-full lg:w-auto px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] font-semibold text-slate-600 outline-none focus:border-primary-500 cursor-pointer shadow-2xs">
                   <option value="Semua">{isEn ? "All Statuses" : "Semua Status"}</option>
                   <option value="Terdaftar">{isEn ? "Registered" : "Terdaftar"}</option>
                   <option value="Proses">{isEn ? "In Process" : "Proses"}</option>
                   <option value="Ditempatkan">{isEn ? "Deployed" : "Ditempatkan"}</option>
                </select>
-               <select value={filterMonth} onChange={e => setFilterMonth(e.target.value)} className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] font-semibold text-slate-600 outline-none focus:border-primary-500 cursor-pointer">
-                  <option value="">{isEn ? "Month" : "Bulan"}</option>
-                  {Array.from({length: 12}, (_, i) => (<option key={i+1} value={String(i+1)}>{new Date(0, i).toLocaleString(isEn ? 'en-US' : 'id-ID', {month: 'long'})}</option>))}
+               <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="w-full lg:w-auto px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] font-semibold text-slate-600 outline-none focus:border-primary-500 cursor-pointer shadow-2xs">
+                  <option value="Semua">{isEn ? "All Categories" : "Semua Kategori"}</option>
+                  <option value="Daerah 3T">{isEn ? "Daerah 3T" : "Daerah 3T"}</option>
+                  <option value="Reguler">{isEn ? "Reguler" : "Reguler"}</option>
+                  <option value="Terpencil">{isEn ? "Terpencil" : "Terpencil"}</option>
+                  <option value="Perbatasan">{isEn ? "Perbatasan" : "Perbatasan"}</option>
                </select>
-               <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] font-semibold text-slate-600 outline-none focus:border-primary-500 cursor-pointer">
-                  <option value="">{isEn ? "Year" : "Tahun"}</option>
-                  <option value="2024">2024</option>
-                  <option value="2025">2025</option>
-                  <option value="2026">2026</option>
-               </select>
+               
+               <div className="flex items-center justify-between gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2.5 w-full lg:w-auto shadow-2xs">
+                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Start</span>
+                 <input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="bg-transparent border-none outline-none text-xs text-slate-700 font-bold cursor-pointer w-full text-right lg:text-left focus:ring-0 min-w-[100px]" />
+               </div>
+               <div className="flex items-center justify-between gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2.5 w-full lg:w-auto shadow-2xs">
+                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">End</span>
+                 <input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="bg-transparent border-none outline-none text-xs text-slate-700 font-bold cursor-pointer w-full text-right lg:text-left focus:ring-0 min-w-[100px]" />
+               </div>
             </div>
           </div>
-          <div className="text-[12.5px] font-bold text-primary-500 bg-primary-50/50 px-3.5 py-1.5 border border-primary-100 rounded-lg whitespace-nowrap">
+          <div className="text-[12.5px] font-bold text-primary-500 bg-primary-50/50 px-3.5 py-1.5 border border-primary-100 rounded-lg whitespace-nowrap self-start lg:self-center">
             {isEn ? `Filtered: ${fullyFilteredData.length} rows` : `Terfilter: ${fullyFilteredData.length} baris`}
           </div>
         </div>
@@ -544,24 +616,32 @@ export const Transmigrants: React.FC = () => {
             )}
             
             {totalPages > 1 && (
-              <div className="mt-6 flex items-center justify-center gap-2">
-                 <button 
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                 >
-                    {isEn ? "Prev" : "Sebelumnya"}
-                 </button>
-                 <span className="text-sm font-medium text-slate-600 px-2">
-                    {isEn ? `Page ${currentPage} of ${totalPages}` : `Hal ${currentPage} dari ${totalPages}`}
-                 </span>
-                 <button 
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                 >
-                    {isEn ? "Next" : "Berikutnya"}
-                 </button>
+              <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-250/20 shadow-xs">
+                <div className="text-xs sm:text-sm text-slate-500 font-medium">
+                  {isEn 
+                    ? `Showing ${Math.min(fullyFilteredData.length, (currentPage - 1) * ITEMS_PER_PAGE + 1)} to ${Math.min(fullyFilteredData.length, currentPage * ITEMS_PER_PAGE)} of ${fullyFilteredData.length} records`
+                    : `Menampilkan ${Math.min(fullyFilteredData.length, (currentPage - 1) * ITEMS_PER_PAGE + 1)} sampai ${Math.min(fullyFilteredData.length, currentPage * ITEMS_PER_PAGE)} dari ${fullyFilteredData.length} data`
+                  }
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button 
+                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                     disabled={currentPage === 1}
+                     className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                     {isEn ? "Prev" : "Sebelumnya"}
+                  </button>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {renderPageNumbers()}
+                  </div>
+                  <button 
+                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                     disabled={currentPage === totalPages}
+                     className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                     {isEn ? "Next" : "Berikutnya"}
+                  </button>
+                </div>
               </div>
             )}
         </div>

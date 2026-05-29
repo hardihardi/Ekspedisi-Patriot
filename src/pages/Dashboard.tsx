@@ -171,7 +171,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
     const unsT = onSnapshot(qTrans, (snap) => {
       transmigrantsCount = snap.size;
       updateStats();
-    });
+    }, (err) => console.error("Failed to load transmigrants:", err));
 
     const qProj = query(collection(db, "projects"));
     const unsP = onSnapshot(qProj, (snap) => {
@@ -226,13 +226,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
       }
 
       updateStats();
-    });
+    }, (err) => console.error("Failed to load projects:", err));
 
     const qTasks = query(collection(db, "tasks"));
     const unsTa = onSnapshot(qTasks, (snap) => {
       tasksCount = snap.size;
       updateStats();
-    });
+    }, (err) => console.error("Failed to load tasks:", err));
 
     const qDocs = query(collection(db, "documents"));
     const unsD = onSnapshot(qDocs, (snap) => {
@@ -242,7 +242,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
       });
       docsCount = count;
       updateStats();
-    });
+    }, (err) => console.error("Failed to load documents:", err));
 
     const qComp = query(collection(db, "complaints"));
     const unsComp = onSnapshot(qComp, (snap) => {
@@ -250,7 +250,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
         .map((doc) => ({ id: doc.id, ...doc.data() }))
         .slice(0, 3);
       setRecentComplaints(items as any);
-    });
+    }, (err) => console.error("Failed to load complaints:", err));
 
     // Register real-time notification logs and count
     const qLogs = query(collection(db, "notification_logs"));
@@ -265,7 +265,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
         )
         .slice(0, 4);
       setGatewayLogs(sorted);
-    });
+    }, (err) => console.error("Failed to load notification_logs:", err));
 
     const qMeet = query(collection(db, "meetings"));
     const unsMeet = onSnapshot(qMeet, (snap) => {
@@ -279,7 +279,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
         })
         .slice(0, 3);
       setRecentMeetings(items);
-    });
+    }, (err) => console.error("Failed to load meetings:", err));
 
     const updateStats = () => {
       setStats([
@@ -366,22 +366,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
         {/* Left Column: Welcome + 4 Micro Stats */}
         <div className="lg:col-span-8 flex flex-col gap-6">
           <div className="bg-white p-6 rounded-xl border-0 shadow-[0_2px_6px_0_rgba(67,89,113,0.12)] relative overflow-hidden flex flex-col justify-center min-h-[190px]">
-            <div className="space-y-4 max-w-[65%]">
+            <div className="space-y-3.5 max-w-[65%]">
               <h3 className="text-base sm:text-lg font-bold text-primary-500">
                 {isEn
                   ? `Welcome Back, ${user?.displayName || "User"}! 🎉`
                   : `Selamat Datang, ${user?.displayName || "User"}! 🎉`}
               </h3>
-              <p className="text-[12.5px] sm:text-[13.5px] font-medium text-slate-500">
+              <p className="text-[12px] sm:text-[13px] font-medium text-slate-400">
                 {appSettings?.instansiName || "Sistem Terpadu Lokus 3T"}
               </p>
               <div>
-                <span className="text-[28px] sm:text-[32px] font-black text-primary-500 tracking-tight block leading-none mb-2">
-                  {stats[0]?.value || "Rp 48.9k"}
+                <span className="text-[28px] sm:text-[32px] font-black text-primary-500 tracking-tight block leading-none mb-3">
+                  {stats[0]?.value ? `${stats[0].value} KK` : "148 KK"}
                 </span>
                 <button
                   onClick={() => setActiveTab?.("projects")}
-                  className="px-4 py-2 bg-primary-500 text-white text-[12.5px] font-bold rounded-lg hover:bg-primary-600 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer shadow-[0_2px_4px_rgba(105,108,255,0.4)] shadow-primary-500/40"
+                  className="px-4 py-2 bg-primary-500 text-white text-[12px] font-bold rounded-lg hover:bg-primary-600 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer shadow-[0_2px_4px_rgba(105,108,255,0.4)] shadow-primary-500/40"
                 >
                   Lihat Capaian
                 </button>
@@ -389,12 +389,38 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
             </div>
             {/* Trophy Graphic Element exactly placed on RHS bottom */}
             <div className="absolute right-4 bottom-2 md:right-8 md:bottom-2 select-none pointer-events-none">
-              <svg
-                className="w-32 h-32 md:w-40 md:h-40 text-primary-200/45"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M18 2H6v2H1v6c0 3.87 3.13 7 7 7h1c1.55 1.55 3.5 2.5 5.5 2.83V21H10v2h4v-2h-3v-1.17c2-.33 3.95-1.28 5.5-2.83h1c3.87 0 7-3.13 7-7V4h-5V2zm-10 11H8c-2.76 0-5-2.24-5-5V6h5v7zm13-5c0 2.76-2.24 5-5 5v-7h5v2z" />
+              <svg width="150" height="150" viewBox="0 0 120 120" fill="none" className="transform scale-90 sm:scale-100 origin-bottom-right">
+                {/* Sparkles / Stars in background */}
+                <circle cx="20" cy="30" r="1.5" fill="#FFD700" className="animate-pulse" />
+                <path d="M 15 25 L 18 28 L 15 31 L 12 28 Z" fill="#FFD700" opacity="0.8" />
+                <path d="M 105 45 L 107 47 L 105 49 L 103 47 Z" fill="#FFD700" opacity="0.6" />
+                <circle cx="102" cy="20" r="2" fill="#8C8CFF" className="animate-pulse" />
+                
+                {/* Trophy Base */}
+                <path d="M 40 100 L 80 100 L 76 108 L 44 108 Z" fill="#4c4f69" opacity="0.2" />
+                <rect x="42" y="92" width="36" height="8" rx="2" fill="#5c5d7a" />
+                <rect x="48" y="86" width="24" height="6" rx="1" fill="#cbd5e1" />
+                <rect x="56" y="70" width="8" height="16" fill="#fbbf24" />
+                <rect x="54" y="68" width="12" height="3" fill="#f59e0b" />
+                
+                {/* Trophy Cup */}
+                <path d="M 36 32 C 36 60 44 68 60 68 C 76 68 84 60 84 32 Z" fill="#fbbf24" />
+                {/* Cup Gloss Accent */}
+                <path d="M 36 32 C 36 50 40 60 52 65 C 44 60 40 45 40 32 Z" fill="#fff" opacity="0.3" />
+                {/* Inner Cup Shading */}
+                <path d="M 40 32 C 40 55 48 64 60 64 C 72 64 80 55 80 32 Z" fill="#f59e0b" opacity="0.1" />
+                <ellipse cx="60" cy="32" rx="24" ry="5" fill="#f59e0b" />
+                <ellipse cx="60" cy="32" rx="22" ry="4" fill="#d97706" />
+
+                {/* Left Handle */}
+                <path d="M 36 38 C 22 38 22 56 36 56 C 30 56 30 44 36 44 Z" fill="#fbbf24" />
+                <path d="M 36 38 C 24 38 24 56 36 56 Z" stroke="#d97706" strokeWidth="2.5" fill="none" />
+                {/* Right Handle */}
+                <path d="M 84 38 C 98 38 98 56 84 56 C 90 56 90 44 84 44 Z" fill="#fbbf24" />
+                <path d="M 84 38 C 96 38 96 56 84 56 Z" stroke="#d97706" strokeWidth="2.5" fill="none" />
+
+                {/* Star on Trophy */}
+                <path d="M 60 40 L 63 46 L 69 47 L 65 52 L 66 58 L 60 55 L 54 58 L 55 52 L 51 47 L 57 46 Z" fill="#fff" />
               </svg>
             </div>
           </div>
@@ -500,11 +526,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
           <div className="grid grid-cols-2 gap-6 flex-1 h-[190px]">
             <div className="bg-white p-5 rounded-xl border-0 shadow-[0_2px_6px_0_rgba(67,89,113,0.12)] flex flex-col justify-between overflow-hidden">
               <div>
-                <div className="text-slate-500 text-[13px] font-semibold">
+                <div className="text-slate-455 text-[12.5px] font-bold">
                   New Visitors
                 </div>
-                <div className="text-2xl font-bold text-slate-700 mt-1">
-                  23%
+                <div className="text-2xl font-black text-slate-750 mt-1 flex items-baseline gap-1.5 leading-none">
+                  Likes 
+                  <span className="text-[11px] text-emerald-500 font-bold">
+                    ▲ +23%
+                  </span>
                 </div>
               </div>
               <div className="h-[60px] w-[120%] -ml-[10%] -mb-5 relative bottom-0">
@@ -522,11 +551,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
 
             <div className="bg-white p-5 rounded-xl border-0 shadow-[0_2px_6px_0_rgba(67,89,113,0.12)] flex flex-col justify-between overflow-hidden relative">
               <div>
-                <div className="text-slate-500 text-[13px] font-semibold">
+                <div className="text-slate-455 text-[12.5px] font-bold">
                   Activity
                 </div>
-                <div className="text-2xl font-bold text-slate-700 mt-1">
-                  82%
+                <div className="text-2xl font-black text-slate-750 mt-1 flex items-baseline gap-1.5 leading-none">
+                  Growth
+                  <span className="text-[11px] text-emerald-500 font-bold">
+                    ▲ +12%
+                  </span>
                 </div>
               </div>
               <div className="h-[60px] w-[120%] -ml-[10%] -mb-5 relative bottom-0">
@@ -555,7 +587,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                     <Area
                       type="monotone"
                       dataKey="value"
-                      stroke="var(--color-emerald-500)"
+                      stroke="var(--color-emerald-600)"
                       strokeWidth={3}
                       fillOpacity={1}
                       fill="url(#greenWave)"
@@ -567,17 +599,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
           </div>
 
           <div className="bg-white p-5 rounded-xl border-0 shadow-[0_2px_6px_0_rgba(67,89,113,0.12)] flex-1 h-[150px] relative overflow-hidden flex flex-col justify-center">
-            <div className="flex items-center gap-4">
-              <div className="w-[84px] h-[84px] border-[6px] border-primary-500 border-r-transparent rounded-full rotate-45 transform"></div>
-              <div>
-                <h4 className="text-[14px] text-slate-500 font-semibold mb-1">
-                  Expenses
-                </h4>
-                <div className="text-2xl font-bold text-slate-700 mb-1">
-                  78%
+            <div className="flex items-center gap-5">
+              {/* Premium Vector Circular Progress Bar matching the Expenses visual gauge in Sneat */}
+              <div className="relative w-[78px] h-[78px] flex items-center justify-center shrink-0">
+                <svg width="78" height="78" viewBox="0 0 80 80" className="transform -rotate-90">
+                  <circle cx="40" cy="40" r="32" stroke="var(--theme-primary-100)" strokeWidth="6" fill="transparent" />
+                  <circle cx="40" cy="40" r="32" stroke="var(--theme-primary-500)" strokeWidth="6.5" strokeDasharray="201" strokeDashoffset={201 * (1 - 0.78)} strokeLinecap="round" fill="transparent" className="transition-all duration-500" />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center font-sans">
+                  <span className="text-[14.5px] font-black text-slate-750 leading-none">
+                    78%
+                  </span>
+                  <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                    reali
+                  </span>
                 </div>
-                <p className="text-[11px] text-slate-400">
-                  Total Expenses more than last month
+              </div>
+              <div className="min-w-0 pr-1">
+                <h4 className="text-[14px] text-slate-600 font-bold mb-1 font-sans truncate">
+                  Realisasi Pos Logistik
+                </h4>
+                <div className="text-[20px] font-extrabold text-slate-800 mb-1 leading-none">
+                  78% Terdistribusi
+                </div>
+                <p className="text-[11px] text-slate-400 font-medium font-sans">
+                  Penyerapan Anggaran Terpantau
                 </p>
               </div>
             </div>

@@ -94,14 +94,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpe
           {appSettings?.logoUrl ? (
             <img src={appSettings.logoUrl} alt="Logo" className="max-h-8 object-contain" />
           ) : (
-            <div className="w-[32px] h-[32px] bg-primary-500 rounded-lg flex items-center justify-center shadow-[0_4px_10px_rgba(25,118,210,0.3)] shrink-0">
-              <span className="text-white font-black text-lg leading-none font-mono tracking-tighter">
-                {appSettings?.appName ? appSettings.appName.charAt(0).toUpperCase() : 'T'}
-              </span>
+            <div className="w-[32px] h-[32px] bg-primary-500 rounded-lg flex items-center justify-center shadow-[0_4px_10px_rgba(105,108,255,0.35)] shrink-0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                <path d="M2 17l10 5 10-5" />
+                <path d="M2 12l10 5 10-5" />
+              </svg>
             </div>
           )}
           <h1 className="text-base sm:text-lg font-black tracking-tight text-slate-800 flex items-center cursor-pointer select-none">
-            {appSettings?.appName || 'Trans3T'}
+            {appSettings?.appName ? appSettings.appName.toLowerCase() : 'sneat'}
             <span className="w-1.5 h-1.5 bg-primary-500 rounded-full ml-0.5 mt-2"></span>
           </h1>
         </div>

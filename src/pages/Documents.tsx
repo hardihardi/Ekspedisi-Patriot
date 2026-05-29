@@ -223,11 +223,57 @@ export const Documents: React.FC = () => {
     }
   };
 
-  const [filterMonth, setFilterMonth] = useState('');
-  const [filterYear, setFilterYear] = useState('');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
   const [filterFolder, setFilterFolder] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 8; // suitable for grid
+
+  const renderPageNumbers = () => {
+    const pages = [];
+    const maxNeighbours = 1;
+    const leftBound = Math.max(2, currentPage - maxNeighbours);
+    const rightBound = Math.min(totalPages - 1, currentPage + maxNeighbours);
+
+    pages.push(1);
+
+    if (leftBound > 2) {
+      pages.push('ellipsis-left');
+    }
+
+    for (let i = leftBound; i <= rightBound; i++) {
+      pages.push(i);
+    }
+
+    if (rightBound < totalPages - 1) {
+      pages.push('ellipsis-right');
+    }
+
+    if (totalPages > 1) {
+      pages.push(totalPages);
+    }
+
+    return pages.map((p, index) => {
+      if (typeof p === 'string') {
+        return <span key={`ellipsis-${index}`} className="text-slate-400 px-1 font-medium">...</span>;
+      }
+      return (
+        <button
+          key={p}
+          type="button"
+          onClick={() => setCurrentPage(p)}
+          className={cn(
+            "w-8 h-8 text-xs sm:text-sm font-bold rounded-lg transition-all border shrink-0",
+            currentPage === p 
+              ? "bg-primary-600 text-white border-primary-600 shadow-xs" 
+              : "border-slate-200 text-slate-650 hover:bg-slate-50 cursor-pointer"
+          )}
+        >
+          {p}
+        </button>
+      );
+    });
+  };
 
   const fullyFilteredDocs = documents.filter(d => {
     let match = true;
@@ -235,19 +281,10 @@ export const Documents: React.FC = () => {
     if (filterFolder && d.folder !== filterFolder) match = false;
     
     if (d.date) {
-      // date is usually YYYY-MM-DD or DD/MM/YYYY text
-      // if it's YYYY-MM-DD
-      const dateParts = d.date.split('-'); 
-      if (dateParts.length === 3) {
-         if (filterYear && dateParts[0] !== filterYear) match = false;
-         if (filterMonth && parseInt(dateParts[1], 10).toString() !== filterMonth) match = false;
-      } else {
-         const date = new Date(d.date);
-         if (!isNaN(date.getTime())) {
-           if (filterMonth && (date.getMonth() + 1).toString() !== filterMonth) match = false;
-           if (filterYear && date.getFullYear().toString() !== filterYear) match = false;
-         }
-      }
+       if (filterStartDate && d.date < filterStartDate) match = false;
+       if (filterEndDate && d.date > filterEndDate) match = false;
+    } else if (filterStartDate || filterEndDate) {
+       match = false;
     }
     return match;
   });
@@ -291,7 +328,7 @@ export const Documents: React.FC = () => {
 
   useEffect(() => {
      setCurrentPage(1);
-  }, [search, filterMonth, filterYear, filterFolder, activeTab]);
+  }, [search, filterStartDate, filterEndDate, filterFolder, activeTab]);
 
   return (
     <div className="space-y-6">
@@ -718,33 +755,44 @@ export const Documents: React.FC = () => {
       )}
 
       <div className="bg-white rounded-xl shadow-[0_2px_6px_0_rgba(67,89,113,0.12)] border-none overflow-hidden flex flex-col">
-        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
-            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-transparent focus-within:bg-white focus-within:border-primary-500 focus-within:shadow-[0_0_0_0.2rem_rgba(105,108,255,0.25)] transition-all w-full sm:w-80">
+        <div className="p-4 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 w-full">
+            <div className="flex items-center gap-2 bg-slate-50 px-3.5 py-2.5 rounded-xl border border-slate-200 focus-within:bg-white focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/20 shadow-2xs transition-all w-full lg:w-80 shrink-0">
               <Search className="w-4 h-4 text-slate-400" />
-              <input value={search} onChange={e => setSearch(e.target.value)} type="text" placeholder="Cari dokumen..." className="bg-transparent border-none outline-none text-[14px] text-slate-600 w-full py-0.5 focus:ring-0" />
+              <input value={search} onChange={e => setSearch(e.target.value)} type="text" placeholder="Cari dokumen..." className="bg-transparent border-none outline-none text-[13px] font-medium text-slate-755 w-full py-0.5 focus:ring-0 placeholder:font-normal placeholder-slate-400" />
             </div>
             
-            <div className="flex flex-wrap gap-2 w-full sm:w-auto overflow-x-auto no-scrollbar">
-               {activeTab === 'cloud' && (
-                 <select value={filterFolder} onChange={e => setFilterFolder(e.target.value)} className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] font-medium text-slate-700 outline-none focus:border-primary-500">
-                    <option value="">Semua Kategori</option>
-                    {FOLDERS.map(f => <option key={f.name} value={f.name}>{f.name}</option>)}
-                 </select>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full">
+               {activeTab === 'cloud' ? (
+                 <>
+                   <select value={filterFolder} onChange={e => setFilterFolder(e.target.value)} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] font-semibold text-slate-600 outline-none focus:border-primary-500 cursor-pointer shadow-2xs">
+                      <option value="">Semua Kategori</option>
+                      {FOLDERS.map(f => <option key={f.name} value={f.name}>{f.name}</option>)}
+                   </select>
+                   <div className="flex items-center justify-between gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2.5 w-full shadow-2xs">
+                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Mulai</span>
+                     <input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="bg-transparent border-none outline-none text-xs text-slate-700 font-bold cursor-pointer w-full text-right lg:text-left focus:ring-0 min-w-[100px]" />
+                   </div>
+                   <div className="flex items-center justify-between gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2.5 w-full shadow-2xs">
+                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Akhir</span>
+                     <input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="bg-transparent border-none outline-none text-xs text-slate-700 font-bold cursor-pointer w-full text-right lg:text-left focus:ring-0 min-w-[100px]" />
+                   </div>
+                 </>
+               ) : (
+                 <div className="col-span-3 grid grid-cols-2 gap-2 w-full">
+                   <div className="flex items-center justify-between gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2.5 w-full shadow-2xs">
+                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Mulai</span>
+                     <input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="bg-transparent border-none outline-none text-xs text-slate-700 font-bold cursor-pointer w-full text-right lg:text-left focus:ring-0 min-w-[100px]" />
+                   </div>
+                   <div className="flex items-center justify-between gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2.5 w-full shadow-2xs">
+                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Akhir</span>
+                     <input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="bg-transparent border-none outline-none text-xs text-slate-700 font-bold cursor-pointer w-full text-right lg:text-left focus:ring-0 min-w-[100px]" />
+                   </div>
+                 </div>
                )}
-               <select value={filterMonth} onChange={e => setFilterMonth(e.target.value)} className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] font-medium text-slate-700 outline-none focus:border-primary-500">
-                  <option value="">Bulan</option>
-                  {Array.from({length: 12}, (_, i) => (<option key={i+1} value={String(i+1)}>{new Date(0, i).toLocaleString('id-ID', {month: 'long'})}</option>))}
-               </select>
-               <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] font-medium text-slate-700 outline-none focus:border-primary-500">
-                  <option value="">Tahun</option>
-                  <option value="2024">2024</option>
-                  <option value="2025">2025</option>
-                  <option value="2026">2026</option>
-               </select>
             </div>
           </div>
-          <div className="flex items-center gap-4 text-[12px] font-medium text-slate-500 whitespace-nowrap">
+          <div className="flex items-center justify-between sm:justify-end gap-4 text-[12px] font-medium text-slate-500 whitespace-nowrap self-start lg:self-center shrink-0 w-full lg:w-auto mt-2 lg:mt-0">
             {activeTab === 'esign' && (
               <>
                 <div className="flex items-center gap-1.5 bg-emerald-50 px-2 py-1 rounded text-emerald-600">
@@ -841,24 +889,29 @@ export const Documents: React.FC = () => {
           )}
           
           {totalPages > 1 && (
-            <div className="mt-6 flex items-center justify-center gap-2 pb-4">
-               <button 
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-               >
-                 Prev
-               </button>
-               <span className="text-sm font-medium text-slate-600 px-2">
-                 Hal {currentPage} dari {totalPages}
-               </span>
-               <button 
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-               >
-                 Next
-               </button>
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200/50 shadow-xs w-full text-left">
+              <div className="text-xs sm:text-sm text-slate-500 font-medium">
+                Menampilkan {Math.min(fullyFilteredDocs.length, (currentPage - 1) * ITEMS_PER_PAGE + 1)} sampai {Math.min(fullyFilteredDocs.length, currentPage * ITEMS_PER_PAGE)} dari {fullyFilteredDocs.length} data
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button 
+                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                   disabled={currentPage === 1}
+                   className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                   Sebelumnya
+                </button>
+                <div className="flex items-center gap-1 flex-wrap">
+                  {renderPageNumbers()}
+                </div>
+                <button 
+                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                   disabled={currentPage === totalPages}
+                   className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                   Berikutnya
+                </button>
+              </div>
             </div>
           )}
         </div>

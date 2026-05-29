@@ -119,8 +119,9 @@ export const Economy: React.FC = () => {
   const [filterPop, setFilterPop] = useState<'Semua' | 'Papua' | 'Non-Papua'>('Semua');
   const [filterSector, setFilterSector] = useState<string>('Semua');
   const [filterRegion, setFilterRegion] = useState<string>('Semua');
-  const [filterMonth, setFilterMonth] = useState<string>('Semua');
-  const [filterYear, setFilterYear] = useState<string>('Semua');
+  const [filterStartDate, setFilterStartDate] = useState<string>('');
+  const [filterEndDate, setFilterEndDate] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [rawProjects, setRawProjects] = useState<any[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string>('');
 
@@ -308,13 +309,16 @@ export const Economy: React.FC = () => {
     const matchesSector = filterSector === 'Semua' || item.sector === filterSector;
     const matchesRegion = filterRegion === 'Semua' || item.region === filterRegion;
 
-    const itemMonth = item.month || (item.createdAt ? MONTHS[new Date(item.createdAt).getMonth()] : 'Mei');
-    const itemYear = item.year || (item.createdAt ? String(new Date(item.createdAt).getFullYear()) : '2026');
+    const itemDate = item.createdAt ? item.createdAt.substring(0, 10) : '';
+    let matchesDate = true;
+    if (itemDate) {
+      if (filterStartDate && itemDate < filterStartDate) matchesDate = false;
+      if (filterEndDate && itemDate > filterEndDate) matchesDate = false;
+    } else if (filterStartDate || filterEndDate) {
+      matchesDate = false;
+    }
 
-    const matchesMonth = filterMonth === 'Semua' || itemMonth === filterMonth;
-    const matchesYear = filterYear === 'Semua' || itemYear === filterYear;
-
-    return matchesSearch && matchesPop && matchesSector && matchesRegion && matchesMonth && matchesYear;
+    return matchesSearch && matchesPop && matchesSector && matchesRegion && matchesDate;
   });
 
   // Dynamic DYNAMIC Stats computation based on filteredData!
@@ -435,6 +439,60 @@ export const Economy: React.FC = () => {
   };
 
   const uniqueRegions = Array.from(new Set(data.map(item => item.region)));
+
+  const ITEMS_PER_PAGE = 7;
+  const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
+  const paginatedData = filteredData.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterPop, filterSector, filterRegion, filterStartDate, filterEndDate]);
+
+  const renderPageNumbers = () => {
+    const pages = [];
+    const maxNeighbours = 1;
+    const leftBound = Math.max(2, currentPage - maxNeighbours);
+    const rightBound = Math.min(totalPages - 1, currentPage + maxNeighbours);
+
+    pages.push(1);
+
+    if (leftBound > 2) {
+      pages.push('ellipsis-left');
+    }
+
+    for (let i = leftBound; i <= rightBound; i++) {
+      pages.push(i);
+    }
+
+    if (rightBound < totalPages - 1) {
+      pages.push('ellipsis-right');
+    }
+
+    if (totalPages > 1) {
+      pages.push(totalPages);
+    }
+
+    return pages.map((p, index) => {
+      if (typeof p === 'string') {
+        return <span key={`ellipsis-${index}`} className="text-slate-400 px-1 font-medium">...</span>;
+      }
+      return (
+        <button
+          key={p}
+          type="button"
+          onClick={() => setCurrentPage(p)}
+          className={cn(
+            "w-8 h-8 text-xs sm:text-sm font-bold rounded-lg transition-all border shrink-0",
+            currentPage === p 
+              ? "bg-primary-500 text-white border-primary-500 shadow-xs" 
+              : "border-slate-200 text-slate-650 hover:bg-slate-50 cursor-pointer"
+          )}
+        >
+          {p}
+        </button>
+      );
+    });
+  };
 
   // Dynamic insight based on the actual Firestore dataset (eliminates hardcoded stubs)
   const getDynamicInsight = () => {
@@ -570,105 +628,7 @@ export const Economy: React.FC = () => {
         </div>
       </div>
 
-      {/* Analytical Charts Block */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Chart Column 1: Income Comparison per Sector */}
-        <div className="lg:col-span-6 bg-white p-6 rounded-xl border-0 shadow-[0_2px_6px_0_rgba(67,89,113,0.12)] flex flex-col justify-between">
-          <div>
-            <h2 className="text-base font-bold text-slate-750 flex items-center gap-1.5 mb-1">
-              <Coins className="w-4 h-4 text-primary-500" />
-              Perbandingan Rata-Rata Pendapatan per Sektor (IDR)
-            </h2>
-            <p className="text-xs text-slate-450 mb-4 font-semibold">Membandingkan pendapatan bulanan rata-rata pelaku usaha di Papua vs Non Papuan.</p>
-          </div>
-          <div className="h-[280px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={sectorIncomeChartData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="sector" tick={{ fontSize: 10, fill: '#64748b', fontWeight: 'bold' }} stroke="#f1f5f9" />
-                <YAxis tickFormatter={(val) => `${val/1000000}M`} tick={{ fontSize: 10, fill: '#64748b' }} stroke="#f1f5f9" />
-                <Tooltip formatter={(value) => formatRupiah(Number(value))} contentStyle={{ fontSize: 11, borderRadius: 8 }} />
-                <Legend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: 11, fontWeight: 'bold' }} />
-                <Bar dataKey="Papua" fill="#696cff" name="Papua (OAP)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="NonPapua" fill="#10b981" name="Non-Papua" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Chart Column 2: Sector Share Distribution */}
-        <div className="lg:col-span-3 bg-white p-6 rounded-xl border-0 shadow-[0_2px_6px_0_rgba(67,89,113,0.12)] flex flex-col justify-between">
-          <div>
-            <h2 className="text-base font-bold text-slate-755 flex items-center gap-1.5 mb-1">
-              <Layers className="w-4 h-4 text-cyan-500" />
-              Sektor Komoditas Unggulan
-            </h2>
-            <p className="text-xs text-slate-450 mb-4 font-semibold">Prosentase sektor mata pencaharian utama seluruh lokus.</p>
-          </div>
-          <div className="h-[200px] w-full relative flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={sectorDistributionData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={4}
-                  dataKey="value"
-                >
-                  {sectorDistributionData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ fontSize: 10, borderRadius: 8 }} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute flex flex-col items-center justify-center text-center mt-[-4px]">
-              <span className="text-xl font-extrabold text-slate-800 leading-none">{filteredData.length}</span>
-              <span className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-widest">LOKUS TERCATAT</span>
-            </div>
-          </div>
-          <div className="space-y-1.5 mt-2">
-            {sectorDistributionData.slice(0, 3).map((entry, index) => (
-              <div key={index} className="flex items-center justify-between text-[11px] font-semibold text-slate-600">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
-                  <span className="truncate max-w-[120px]">{entry.name}</span>
-                </div>
-                <span className="text-slate-450 font-bold">{entry.value} Lokus</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Chart Column 3: Market Access Index */}
-        <div className="lg:col-span-3 bg-white p-6 rounded-xl border-0 shadow-[0_2px_6px_0_rgba(67,89,113,0.12)] flex flex-col justify-between overflow-hidden">
-          <div>
-            <h2 className="text-base font-bold text-slate-755 flex items-center gap-1.5 mb-1 font-sans">
-              <ShoppingBag className="w-4 h-4 text-emerald-500" />
-              Akses Pemasaran Produk
-            </h2>
-            <p className="text-xs text-slate-450 mb-3 font-semibold">Tingkatan akses rantai nilai pasar regional hingga luar negeri.</p>
-          </div>
-          <div className="h-[210px] w-full flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart cx="50%" cy="50%" outerRadius="70%" data={marketAccessChartData}>
-                <PolarGrid stroke="#e2e8f0" />
-                <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9, fill: '#64748b', fontWeight: 'bold' }} />
-                <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={{ fontSize: 8 }} />
-                <Radar name="Papua" dataKey="Papua" stroke="#696cff" fill="#696cff" fillOpacity={0.25} />
-                <Radar name="Non Papua" dataKey="Non Papua" stroke="#10b981" fill="#10b981" fillOpacity={0.25} />
-                <Legend iconSize={6} iconType="circle" wrapperStyle={{ fontSize: 9, bottom: 0 }} />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="text-[10px] bg-slate-50 border-0 p-2.5 rounded-xl text-slate-500 mt-2 font-medium leading-relaxed">
-            {getDynamicInsight()}
-          </div>
-        </div>
-      </div>
+      {/* Analytical Charts Block Removed */}
 
       {/* Smart Filters Pane */}
       <div className="bg-white rounded-xl border-0 shadow-[0_2px_6px_0_rgba(67,89,113,0.12)] p-4">
@@ -686,7 +646,7 @@ export const Economy: React.FC = () => {
           </div>
 
           {/* Filters selectors - Fully responsive grid on mobile, flex on desktop */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:flex lg:flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:flex lg:flex-wrap items-center gap-2.5 w-full lg:w-auto justify-end">
             <div className="col-span-2 md:col-span-1 lg:col-span-1 flex items-center gap-1.5 shrink-0 py-1">
               <Filter className="w-3.5 h-3.5 text-slate-450" />
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">FILTER:</span>
@@ -696,7 +656,7 @@ export const Economy: React.FC = () => {
             <select
               value={filterPop}
               onChange={(e) => setFilterPop(e.target.value as any)}
-              className="w-full lg:w-auto bg-slate-50 border border-slate-200 text-xs font-semibold rounded-lg px-2.5 py-2 text-slate-700 focus:outline-none focus:border-primary-500 focus:bg-white cursor-pointer animate-fade-in"
+              className="w-full lg:w-auto bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl px-3.5 py-2.5 text-slate-700 focus:outline-none focus:border-primary-500 focus:bg-white cursor-pointer shadow-2xs transition-all"
             >
               <option value="Semua">Kelompok (Semua)</option>
               <option value="Papua">Papua (OAP)</option>
@@ -707,7 +667,7 @@ export const Economy: React.FC = () => {
             <select
               value={filterSector}
               onChange={(e) => setFilterSector(e.target.value)}
-              className="w-full lg:w-auto bg-slate-50 border border-slate-200 text-xs font-semibold rounded-lg px-2.5 py-2 text-slate-700 focus:outline-none focus:border-primary-500 focus:bg-white cursor-pointer"
+              className="w-full lg:w-auto bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl px-3.5 py-2.5 text-slate-700 focus:outline-none focus:border-primary-500 focus:bg-white cursor-pointer shadow-2xs transition-all"
             >
               <option value="Semua">Sektor (Semua)</option>
               {SECTORS.map((sec, i) => (
@@ -719,7 +679,7 @@ export const Economy: React.FC = () => {
             <select
               value={filterRegion}
               onChange={(e) => setFilterRegion(e.target.value)}
-              className="w-full lg:w-auto bg-slate-50 border border-slate-200 text-xs font-semibold rounded-lg px-2.5 py-2 text-slate-700 focus:outline-none focus:border-primary-500 focus:bg-white cursor-pointer select-none"
+              className="w-full lg:w-auto bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl px-3.5 py-2.5 text-slate-700 focus:outline-none focus:border-primary-500 focus:bg-white cursor-pointer shadow-2xs transition-all select-none"
             >
               <option value="Semua">Wilayah (Semua)</option>
               {uniqueRegions.length > 0 ? (
@@ -733,40 +693,28 @@ export const Economy: React.FC = () => {
               )}
             </select>
 
-            {/* Bulan dropdown */}
-            <select
-              value={filterMonth}
-              onChange={(e) => setFilterMonth(e.target.value)}
-              className="w-full lg:w-auto bg-slate-50 border border-slate-200 text-xs font-semibold rounded-lg px-2.5 py-2 text-slate-700 focus:outline-none focus:border-primary-500 focus:bg-white cursor-pointer"
-            >
-              <option value="Semua">Bulan (Semua)</option>
-              {MONTHS.map((m, i) => (
-                <option key={i} value={m}>{m}</option>
-              ))}
-            </select>
+            {/* Start Date */}
+            <div className="flex items-center justify-between gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 w-full lg:w-auto shadow-2xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Mulai</span>
+              <input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="bg-transparent border-none outline-none text-xs text-slate-700 font-bold cursor-pointer w-full text-right lg:text-left focus:ring-0 min-w-[100px]" />
+            </div>
 
-            {/* Tahun dropdown */}
-            <select
-              value={filterYear}
-              onChange={(e) => setFilterYear(e.target.value)}
-              className="w-full lg:w-auto bg-slate-50 border border-slate-200 text-xs font-semibold rounded-lg px-2.5 py-2 text-slate-700 focus:outline-none focus:border-primary-500 focus:bg-white cursor-pointer"
-            >
-              <option value="Semua">Tahun (Semua)</option>
-              {YEARS.map((y, i) => (
-                <option key={i} value={y}>{y}</option>
-              ))}
-            </select>
+            {/* End Date */}
+            <div className="flex items-center justify-between gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 w-full lg:w-auto shadow-2xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Akhir</span>
+              <input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="bg-transparent border-none outline-none text-xs text-slate-700 font-bold cursor-pointer w-full text-right lg:text-left focus:ring-0 min-w-[100px]" />
+            </div>
             
             {/* Clear Filters Button */}
-            {(search !== '' || filterPop !== 'Semua' || filterSector !== 'Semua' || filterRegion !== 'Semua' || filterMonth !== 'Semua' || filterYear !== 'Semua') && (
+            {(search !== '' || filterPop !== 'Semua' || filterSector !== 'Semua' || filterRegion !== 'Semua' || filterStartDate !== '' || filterEndDate !== '') && (
               <button 
                 onClick={() => {
                   setSearch('');
                   setFilterPop('Semua');
                   setFilterSector('Semua');
                   setFilterRegion('Semua');
-                  setFilterMonth('Semua');
-                  setFilterYear('Semua');
+                  setFilterStartDate('');
+                  setFilterEndDate('');
                 }}
                 className="col-span-2 md:col-span-1 lg:col-span-1 text-center text-[11px] font-bold text-rose-500 hover:text-rose-600 bg-rose-50 hover:bg-rose-100 px-3 py-2 rounded-lg transition-all cursor-pointer"
               >
@@ -809,7 +757,7 @@ export const Economy: React.FC = () => {
           <div>
             {/* Mobile-first Cards View: Hidden on medium screens (md) and up, block on mobile */}
             <div className="block md:hidden divide-y divide-slate-200">
-              {filteredData.map((item) => (
+              {paginatedData.map((item) => (
                 <div key={item.id} className="p-5 hover:bg-slate-50/50 transition-colors space-y-4 text-left">
                   {/* Card Title & Kelompok OAP/Non-OAP Tag */}
                   <div className="flex items-start justify-between gap-2.5">
@@ -930,7 +878,7 @@ export const Economy: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-650">
-                  {filteredData.map((item) => (
+                  {paginatedData.map((item) => (
                     <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
                       {/* Lokus & Region */}
                       <td className="py-3.5 px-5">
@@ -1031,6 +979,32 @@ export const Economy: React.FC = () => {
                 </tbody>
               </table>
             </div>
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 border-t border-slate-100 w-full text-left">
+                <div className="text-xs sm:text-sm text-slate-500 font-medium">
+                  Menampilkan {Math.min(filteredData.length, (currentPage - 1) * ITEMS_PER_PAGE + 1)} sampai {Math.min(filteredData.length, currentPage * ITEMS_PER_PAGE)} dari {filteredData.length} data
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button 
+                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                     disabled={currentPage === 1}
+                     className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                     Sebelumnya
+                  </button>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {renderPageNumbers()}
+                  </div>
+                  <button 
+                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                     disabled={currentPage === totalPages}
+                     className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                     Berikutnya
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

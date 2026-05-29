@@ -338,21 +338,73 @@ export const Meetings: React.FC = () => {
      }
   };
 
-  const [filterMonth, setFilterMonth] = useState('');
-  const [filterYear, setFilterYear] = useState('');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+  const [filterType, setFilterType] = useState('Semua');
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 8;
+
+  const renderPageNumbers = () => {
+    const pages = [];
+    const maxNeighbours = 1;
+    const leftBound = Math.max(2, currentPage - maxNeighbours);
+    const rightBound = Math.min(totalPages - 1, currentPage + maxNeighbours);
+
+    pages.push(1);
+
+    if (leftBound > 2) {
+      pages.push('ellipsis-left');
+    }
+
+    for (let i = leftBound; i <= rightBound; i++) {
+      pages.push(i);
+    }
+
+    if (rightBound < totalPages - 1) {
+      pages.push('ellipsis-right');
+    }
+
+    if (totalPages > 1) {
+      pages.push(totalPages);
+    }
+
+    return pages.map((p, index) => {
+      if (typeof p === 'string') {
+        return <span key={`ellipsis-${index}`} className="text-slate-400 px-1 font-medium">...</span>;
+      }
+      return (
+        <button
+          key={p}
+          type="button"
+          onClick={() => setCurrentPage(p)}
+          className={cn(
+            "w-8 h-8 text-xs sm:text-sm font-bold rounded-lg transition-all border shrink-0",
+            currentPage === p 
+              ? "bg-primary-600 text-white border-primary-600 shadow-xs" 
+              : "border-slate-200 text-slate-650 hover:bg-slate-50 cursor-pointer"
+          )}
+        >
+          {p}
+        </button>
+      );
+    });
+  };
 
   const fullyFilteredMeetings = meetings.filter(c => {
     const isMatchTab = activeTab === 'Terjadwal' ? c.status !== 'Completed' : c.status === 'Completed';
     let match = isMatchTab && c.title?.toLowerCase().includes(search.toLowerCase());
     
+    // Type Filter (Category equivalent)
+    if (filterType !== 'Semua' && c.type !== filterType) {
+      match = false;
+    }
+
+    // Start/End Date Filter
     if (c.date && match) {
-      const dateParts = c.date.split('-');
-      if (dateParts.length >= 2) {
-         if (filterYear && dateParts[0] !== filterYear) match = false;
-         if (filterMonth && parseInt(dateParts[1], 10).toString() !== filterMonth) match = false;
-      }
+       if (filterStartDate && c.date < filterStartDate) match = false;
+       if (filterEndDate && c.date > filterEndDate) match = false;
+    } else if ((filterStartDate || filterEndDate) && !c.date) {
+       match = false;
     }
     return match;
   }).sort((a, b) => {
@@ -404,7 +456,7 @@ export const Meetings: React.FC = () => {
 
   useEffect(() => {
      setCurrentPage(1);
-  }, [search, filterMonth, filterYear, activeTab]);
+  }, [search, filterStartDate, filterEndDate, filterType, activeTab]);
 
   return (
     <div className="space-y-6 flex flex-col h-full">
@@ -663,21 +715,26 @@ export const Meetings: React.FC = () => {
                <FileText className="w-4 h-4" /> {isEn ? "Minutes / Done" : "Notulen/Selesai"}
              </button>
           </div>
-          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-            <div className="flex flex-1 md:flex-none items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg border border-transparent focus-within:bg-white focus-within:border-primary-600 focus-within:shadow-[0_0_0_0.2rem_rgba(105,108,255,0.25)] transition-all">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 w-full lg:w-auto">
+            <div className="flex items-center gap-2 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus-within:bg-white focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/20 shadow-2xs transition-all w-full lg:w-64 shrink-0">
               <Search className="w-4 h-4 text-slate-400" />
-              <input value={search} onChange={e => setSearch(e.target.value)} type="text" placeholder={isEn ? "Search..." : "Cari..."} className="bg-transparent border-none outline-none text-[14px] text-slate-600 focus:ring-0 w-full" />
+              <input value={search} onChange={e => setSearch(e.target.value)} type="text" placeholder={isEn ? "Search..." : "Cari..."} className="bg-transparent border-none outline-none text-[13px] font-semibold text-slate-700 focus:ring-0 w-full placeholder:font-normal placeholder-slate-400" />
             </div>
-            <select value={filterMonth} onChange={e => setFilterMonth(e.target.value)} className="px-3 py-2 bg-slate-50 border border-transparent rounded-lg text-[13px] font-medium text-slate-700 outline-none focus:bg-white focus:border-primary-500">
-               <option value="">{isEn ? "Month" : "Bulan"}</option>
-               {Array.from({length: 12}, (_, i) => (<option key={i+1} value={String(i+1)}>{new Date(0, i).toLocaleString(isEn ? 'en-US' : 'id-ID', {month: 'long'})}</option>))}
-            </select>
-            <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className="px-3 py-2 bg-slate-50 border border-transparent rounded-lg text-[13px] font-medium text-slate-700 outline-none focus:bg-white focus:border-primary-500">
-               <option value="">{isEn ? "Year" : "Tahun"}</option>
-               <option value="2024">2024</option>
-               <option value="2025">2025</option>
-               <option value="2026">2026</option>
-            </select>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full">
+              <select value={filterType} onChange={e => setFilterType(e.target.value)} className="w-full lg:w-auto px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] font-semibold text-slate-705 outline-none focus:border-primary-500 cursor-pointer shadow-2xs">
+                 <option value="Semua">{isEn ? "All Types" : "Semua Tipe"}</option>
+                 <option value="Online">Online</option>
+                 <option value="Offline">Offline</option>
+              </select>
+              <div className="flex items-center justify-between gap-1.5 bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 w-full shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Start</span>
+                <input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="bg-transparent border-none outline-none text-xs text-slate-700 font-bold cursor-pointer w-full text-right lg:text-left focus:ring-0 min-w-[100px]" />
+              </div>
+              <div className="flex items-center justify-between gap-1.5 bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 w-full shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">End</span>
+                <input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="bg-transparent border-none outline-none text-xs text-slate-700 font-bold cursor-pointer w-full text-right lg:text-left focus:ring-0 min-w-[100px]" />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -790,24 +847,32 @@ export const Meetings: React.FC = () => {
           </div>
           )}
           {totalPages > 1 && (
-            <div className="mt-4 flex items-center justify-center gap-2">
-               <button 
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-               >
-                 {isEn ? "Prev" : "Sebelumnya"}
-               </button>
-               <span className="text-sm font-medium text-slate-600 px-2">
-                 {isEn ? `Page ${currentPage} of ${totalPages}` : `Hal ${currentPage} dari ${totalPages}`}
-               </span>
-               <button 
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-               >
-                 {isEn ? "Next" : "Berikutnya"}
-               </button>
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200/50 shadow-xs w-full">
+              <div className="text-xs sm:text-sm text-slate-500 font-medium">
+                {isEn 
+                  ? `Showing ${Math.min(fullyFilteredMeetings.length, (currentPage - 1) * ITEMS_PER_PAGE + 1)} to ${Math.min(fullyFilteredMeetings.length, currentPage * ITEMS_PER_PAGE)} of ${fullyFilteredMeetings.length} meetings`
+                  : `Menampilkan ${Math.min(fullyFilteredMeetings.length, (currentPage - 1) * ITEMS_PER_PAGE + 1)} sampai ${Math.min(fullyFilteredMeetings.length, currentPage * ITEMS_PER_PAGE)} dari ${fullyFilteredMeetings.length} rapat`
+                }
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button 
+                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                   disabled={currentPage === 1}
+                   className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                   {isEn ? "Prev" : "Sebelumnya"}
+                </button>
+                <div className="flex items-center gap-1 flex-wrap">
+                  {renderPageNumbers()}
+                </div>
+                <button 
+                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                   disabled={currentPage === totalPages}
+                   className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                   {isEn ? "Next" : "Berikutnya"}
+                </button>
+              </div>
             </div>
           )}
         </div>

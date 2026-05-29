@@ -31,6 +31,9 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, doc, writeBatch } from 'firebase/firestore';
 import { useStore } from '../store/useStore';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import Papa from 'papaparse';
 
 interface InfrastructureItem {
   id?: string;
@@ -272,6 +275,9 @@ export const Infrastructure: React.FC = () => {
   const [filterType, setFilterType] = useState('Semua');
   const [filterRegion, setFilterRegion] = useState('Semua');
   const [filterStatus, setFilterStatus] = useState('Semua');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState<'all' | 'papua' | 'non-papua'>('all');
   const [rawProjects, setRawProjects] = useState<any[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string>('');
@@ -644,7 +650,17 @@ export const Infrastructure: React.FC = () => {
     // Status filter
     const matchesStatus = filterStatus === 'Semua' || item.status === filterStatus;
 
-    return matchesSearch && matchesType && matchesRegion && matchesStatus;
+    // Date range filter
+    const itemDate = item.createdAt ? item.createdAt.substring(0, 10) : '';
+    let matchesDate = true;
+    if (itemDate) {
+      if (filterStartDate && itemDate < filterStartDate) matchesDate = false;
+      if (filterEndDate && itemDate > filterEndDate) matchesDate = false;
+    } else if (filterStartDate || filterEndDate) {
+      matchesDate = false;
+    }
+
+    return matchesSearch && matchesType && matchesRegion && matchesStatus && matchesDate;
   });
 
   // Calculate high quality functional summaries
@@ -656,6 +672,115 @@ export const Infrastructure: React.FC = () => {
 
   const papuaCount = items.filter(i => i.isPapua).length;
   const nonPapuaCount = items.filter(i => !i.isPapua).length;
+
+  const ITEMS_PER_PAGE = 7;
+  const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
+  const paginatedItems = filteredItems.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterType, filterStatus, filterStartDate, filterEndDate, activeTab]);
+
+  const renderPageNumbers = () => {
+    const pages = [];
+    const maxNeighbours = 1;
+    const leftBound = Math.max(2, currentPage - maxNeighbours);
+    const rightBound = Math.min(totalPages - 1, currentPage + maxNeighbours);
+
+    pages.push(1);
+
+    if (leftBound > 2) {
+      pages.push('ellipsis-left');
+    }
+
+    for (let i = leftBound; i <= rightBound; i++) {
+      pages.push(i);
+    }
+
+    if (rightBound < totalPages - 1) {
+      pages.push('ellipsis-right');
+    }
+
+    if (totalPages > 1) {
+      pages.push(totalPages);
+    }
+
+    return pages.map((p, index) => {
+      if (typeof p === 'string') {
+        return <span key={`ellipsis-${index}`} className="text-slate-400 px-1 font-medium">...</span>;
+      }
+      return (
+        <button
+          key={p}
+          type="button"
+          onClick={() => setCurrentPage(p)}
+          className={cn(
+            "w-8 h-8 text-xs sm:text-sm font-bold rounded-lg transition-all border shrink-0",
+            currentPage === p 
+              ? "bg-primary-600 text-white border-primary-600 shadow-xs" 
+              : "border-slate-200 text-slate-655 hover:bg-slate-50 cursor-pointer"
+          )}
+        >
+          {p}
+        </button>
+      );
+    });
+  };
+
+  const exportCSV = () => {
+    const exportData = filteredItems.map(item => ({
+      'Nama Infrastruktur': item.name,
+      'Sektor': item.type,
+      'Kawasan (Lokus)': item.kawasan,
+      'Wilayah': item.isPapua ? 'Papua' : 'Non-Papua',
+      'Detail Lokasi': item.locationName,
+      'Anggaran': item.budget,
+      'Sumber Pendanaan': item.fundingSource,
+      'Status': item.status,
+      'Target Dampak': item.impact,
+      'Deskripsi': item.description
+    }));
+
+    const csv = Papa.unparse(exportData);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `Pembangunan_Infrastruktur_Report_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportPDF = () => {
+    const doc = new jsPDF('l', 'mm', 'a4');
+    doc.setFontSize(16);
+    doc.text('Laporan Pembangunan Infrastruktur Daerah Transmigrasi', 14, 15);
+    doc.setFontSize(9);
+    doc.text(`Dicetak pada: ${new Date().toLocaleString('id-ID')}`, 14, 21);
+
+    const tableRows = filteredItems.map((item, index) => [
+      index + 1,
+      item.name,
+      item.type,
+      item.kawasan,
+      item.isPapua ? 'Papua' : 'Non-Papua',
+      item.locationName,
+      formatRupiah(item.budget),
+      item.fundingSource,
+      item.status,
+      item.impact
+    ]);
+
+    autoTable(doc, {
+      head: [['No', 'Nama Infrastruktur', 'Sektor', 'Kawasan', 'Wilayah', 'Lokasi', 'Anggaran', 'Sumber', 'Status', 'Target Dampak (Impact)']],
+      body: tableRows,
+      startY: 25,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [105, 108, 255] }
+    });
+
+    doc.save(`Pembangunan_Infrastruktur_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
 
   // Formatting helper
   const formatRupiah = (num: number) => {
@@ -839,15 +964,15 @@ export const Infrastructure: React.FC = () => {
         </div>
 
         {/* Categories Selection */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
-          <div className="grid grid-cols-2 gap-2 flex-grow sm:flex-grow-0 sm:flex sm:flex-wrap sm:items-center">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 w-full lg:w-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:flex lg:flex-wrap lg:items-center gap-2">
             {/* Sektor filter */}
-            <div className="flex items-center justify-between sm:justify-start gap-1.5 bg-slate-50 px-2.5 py-2 sm:py-1 rounded-lg border border-slate-200 text-xs">
+            <div className="flex items-center justify-between gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 w-full lg:w-auto shadow-2xs">
               <span className="text-slate-450 font-medium whitespace-nowrap">Sektor:</span>
               <select 
                 value={filterType} 
                 onChange={(e) => setFilterType(e.target.value)}
-                className="bg-transparent border-none outline-none font-semibold text-slate-700 cursor-pointer text-right sm:text-left text-xs bg-slate-50 focus:ring-0"
+                className="bg-transparent border-none outline-none font-bold text-slate-750 cursor-pointer text-xs focus:ring-0 w-full text-right lg:text-left min-w-[70px]"
               >
                 <option value="Semua">Semua</option>
                 <option value="Transportasi">Transportasi</option>
@@ -859,12 +984,12 @@ export const Infrastructure: React.FC = () => {
             </div>
 
             {/* Status filter */}
-            <div className="flex items-center justify-between sm:justify-start gap-1.5 bg-slate-50 px-2.5 py-2 sm:py-1 rounded-lg border border-slate-200 text-xs">
+            <div className="flex items-center justify-between gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 w-full lg:w-auto shadow-2xs">
               <span className="text-slate-450 font-medium whitespace-nowrap">Status:</span>
               <select 
                 value={filterStatus} 
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="bg-transparent border-none outline-none font-semibold text-slate-700 cursor-pointer text-right sm:text-left text-xs bg-slate-50 focus:ring-0"
+                className="bg-transparent border-none outline-none font-bold text-slate-750 cursor-pointer text-xs focus:ring-0 w-full text-right lg:text-left min-w-[70px]"
               >
                 <option value="Semua">Semua</option>
                 <option value="Rencana">Rencana</option>
@@ -873,21 +998,64 @@ export const Infrastructure: React.FC = () => {
                 <option value="Rehabilitasi">Rehabilitasi</option>
               </select>
             </div>
+
+            {/* Start Date */}
+            <div className="flex items-center justify-between gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 w-full lg:w-auto shadow-2xs">
+              <span className="text-slate-450 font-medium whitespace-nowrap">Mulai:</span>
+              <input 
+                type="date" 
+                value={filterStartDate} 
+                onChange={e => setFilterStartDate(e.target.value)} 
+                className="bg-transparent border-none outline-none font-bold text-slate-750 cursor-pointer text-xs w-full text-right lg:text-left min-w-[70px] focus:ring-0" 
+              />
+            </div>
+
+            {/* End Date */}
+            <div className="flex items-center justify-between gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 w-full lg:w-auto shadow-2xs">
+              <span className="text-slate-450 font-medium whitespace-nowrap">Akhir:</span>
+              <input 
+                type="date" 
+                value={filterEndDate} 
+                onChange={e => setFilterEndDate(e.target.value)} 
+                className="bg-transparent border-none outline-none font-bold text-slate-750 cursor-pointer text-xs w-full text-right lg:text-left min-w-[70px] focus:ring-0"
+              />
+            </div>
           </div>
 
-          {/* Reset Filters button */}
-          {(search !== '' || filterType !== 'Semua' || filterStatus !== 'Semua') && (
+          <div className="flex items-center gap-2 mt-2 lg:mt-0">
+            {/* Export buttons */}
             <button
-              onClick={() => {
-                setSearch('');
-                setFilterType('Semua');
-                setFilterStatus('Semua');
-              }}
-              className="text-xs text-slate-500 hover:text-primary-500 transition-colors font-medium sm:ml-1 py-1.5 flex items-center justify-center gap-1 border border-slate-200 sm:border-transparent rounded-lg sm:border-0 hover:bg-slate-50 sm:hover:bg-transparent"
+              type="button"
+              onClick={exportPDF}
+              className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-all cursor-pointer shadow-xs"
             >
-              <RefreshCw className="w-3 h-3" /> Bersihkan Filter
+              Export PDF
             </button>
-          )}
+            <button
+              type="button"
+              onClick={exportCSV}
+              className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-all cursor-pointer shadow-xs"
+            >
+              Export CSV
+            </button>
+
+            {/* Reset Filters button */}
+            {(search !== '' || filterType !== 'Semua' || filterStatus !== 'Semua' || filterStartDate !== '' || filterEndDate !== '') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch('');
+                  setFilterType('Semua');
+                  setFilterStatus('Semua');
+                  setFilterStartDate('');
+                  setFilterEndDate('');
+                }}
+                className="flex-1 lg:flex-none text-xs text-slate-500 hover:text-primary-500 transition-colors font-semibold py-1.5 px-2.5 flex items-center justify-center gap-1 border border-slate-200 hover:bg-slate-50 rounded-lg shrink-0 cursor-pointer"
+              >
+                <RefreshCw className="w-3 h-3" /> Bersihkan Filter
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -915,8 +1083,9 @@ export const Infrastructure: React.FC = () => {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredItems.map((item) => {
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {paginatedItems.map((item) => {
             const SektorIcon = getTypeIcon(item.type);
             return (
               <motion.div
@@ -1029,6 +1198,33 @@ export const Infrastructure: React.FC = () => {
             );
           })}
         </div>
+        {totalPages > 1 && (
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200/50 shadow-xs w-full text-left">
+            <div className="text-xs sm:text-sm text-slate-500 font-medium">
+              Menampilkan {Math.min(filteredItems.length, (currentPage - 1) * ITEMS_PER_PAGE + 1)} sampai {Math.min(filteredItems.length, currentPage * ITEMS_PER_PAGE)} dari {filteredItems.length} data
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button 
+                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                 disabled={currentPage === 1}
+                 className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                 Sebelumnya
+              </button>
+              <div className="flex items-center gap-1 flex-wrap">
+                {renderPageNumbers()}
+              </div>
+              <button 
+                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                 disabled={currentPage === totalPages}
+                 className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                 Berikutnya
+              </button>
+            </div>
+          </div>
+        )}
+      </>
       )}
 
       {/* Main Form Modal for Creating/Editing Infrastructure */}

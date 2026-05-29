@@ -190,19 +190,71 @@ export const ProjectManagement: React.FC = () => {
     }
   };
 
-  const [filterMonth, setFilterMonth] = useState('');
-  const [filterYear, setFilterYear] = useState('');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+  const [filterPriority, setFilterPriority] = useState('Semua');
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 20; // larger for kanban
 
+  const renderPageNumbers = () => {
+    const pages = [];
+    const maxNeighbours = 1;
+    const leftBound = Math.max(2, currentPage - maxNeighbours);
+    const rightBound = Math.min(totalPages - 1, currentPage + maxNeighbours);
+
+    pages.push(1);
+
+    if (leftBound > 2) {
+      pages.push('ellipsis-left');
+    }
+
+    for (let i = leftBound; i <= rightBound; i++) {
+      pages.push(i);
+    }
+
+    if (rightBound < totalPages - 1) {
+      pages.push('ellipsis-right');
+    }
+
+    if (totalPages > 1) {
+      pages.push(totalPages);
+    }
+
+    return pages.map((p, index) => {
+      if (typeof p === 'string') {
+        return <span key={`ellipsis-${index}`} className="text-slate-400 px-1 font-medium">...</span>;
+      }
+      return (
+        <button
+          key={p}
+          onClick={() => setCurrentPage(p)}
+          className={cn(
+            "w-8 h-8 text-xs sm:text-sm font-bold rounded-lg transition-all border shrink-0",
+            currentPage === p 
+              ? "bg-primary-600 text-white border-primary-600 shadow-xs" 
+              : "border-slate-200 text-slate-650 hover:bg-slate-50 cursor-pointer"
+          )}
+        >
+          {p}
+        </button>
+      );
+    });
+  };
+
   const fullyFilteredProjectTasks = tasks.filter(t => {
      let match = t.projectId === selectedProject && t.title?.toLowerCase().includes(searchTask.toLowerCase());
+     
+     // Filter by priority
+     if (filterPriority !== 'Semua' && t.priority !== filterPriority) {
+       match = false;
+     }
+
+     // Filter by Start/End Date
      if (t.date && match) {
-       const dateParts = t.date.split('-');
-       if (dateParts.length >= 2) {
-          if (filterYear && dateParts[0] !== filterYear) match = false;
-          if (filterMonth && parseInt(dateParts[1], 10).toString() !== filterMonth) match = false;
-       }
+       if (filterStartDate && t.date < filterStartDate) match = false;
+       if (filterEndDate && t.date > filterEndDate) match = false;
+     } else if ((filterStartDate || filterEndDate) && !t.date) {
+       match = false;
      }
      return match;
   });
@@ -247,7 +299,7 @@ export const ProjectManagement: React.FC = () => {
 
   useEffect(() => {
      setCurrentPage(1);
-  }, [searchTask, filterMonth, filterYear, selectedProject]);
+  }, [searchTask, filterStartDate, filterEndDate, filterPriority, selectedProject]);
 
   const taskStats = [
     { name: 'To-Do', value: fullyFilteredProjectTasks.filter(t => t.status === 'todo').length, color: '#3b82f6' },
@@ -256,7 +308,7 @@ export const ProjectManagement: React.FC = () => {
   ].filter(s => s.value > 0);
 
   return (
-    <div className="space-y-4 sm:space-y-6 flex flex-col h-full">
+    <div className="space-y-4 sm:space-y-6 flex flex-col min-h-[calc(100vh-140px)] lg:h-full">
       <ConfirmDialog
         isOpen={!!taskToDelete}
         onClose={() => setTaskToDelete(null)}
@@ -392,31 +444,39 @@ export const ProjectManagement: React.FC = () => {
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Project Management</h1>
           <p className="text-slate-500 text-xs sm:text-sm mt-0.5">Pantau kemajuan infrastruktur dan adminstrasi lahan di Kawasan {selectedProject}.</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto mt-4 sm:mt-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-transparent focus-within:bg-white focus-within:border-primary-500 focus-within:shadow-[0_0_0_0.2rem_rgba(105,108,255,0.25)] transition-all w-full sm:w-64">
+        <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center w-full lg:w-auto mt-4 lg:mt-0">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full">
+            <div className="flex items-center gap-2 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus-within:bg-white focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/20 shadow-2xs transition-all w-full sm:w-56 shrink-0">
               <Search className="w-4 h-4 text-slate-400" />
-              <input value={searchTask} onChange={e => setSearchTask(e.target.value)} type="text" placeholder="Cari task..." className="bg-transparent border-none outline-none text-[14px] text-slate-600 focus:ring-0 w-full py-0.5" />
+              <input value={searchTask} onChange={e => setSearchTask(e.target.value)} type="text" placeholder="Cari task..." className="bg-transparent border-none outline-none text-[13px] font-semibold text-slate-700 focus:ring-0 w-full placeholder:font-normal placeholder-slate-400" />
             </div>
-            <select value={filterMonth} onChange={e => setFilterMonth(e.target.value)} className="px-3 py-2 bg-slate-50 border border-transparent rounded-lg text-[13px] font-medium text-slate-700 outline-none focus:bg-white focus:border-primary-500">
-               <option value="">Bulan</option>
-               {Array.from({length: 12}, (_, i) => (<option key={i+1} value={String(i+1)}>{new Date(0, i).toLocaleString('id-ID', {month: 'long'})}</option>))}
-            </select>
-            <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className="px-3 py-2 bg-slate-50 border border-transparent rounded-lg text-[13px] font-medium text-slate-700 outline-none focus:bg-white focus:border-primary-500">
-               <option value="">Tahun</option>
-               <option value="2024">2024</option>
-               <option value="2025">2025</option>
-               <option value="2026">2026</option>
-            </select>
-            <button onClick={exportPDF} className="flex items-center justify-center gap-1.5 bg-white border-0 shadow-[0_2px_6px_0_rgba(67,89,113,0.12)] text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-all ">
-              PDF
-            </button>
-            <button onClick={exportCSV} className="flex items-center justify-center gap-1.5 bg-white border-0 shadow-[0_2px_6px_0_rgba(67,89,113,0.12)] text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-all ">
-              CSV
-            </button>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full">
+              <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)} className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] font-semibold text-slate-705 outline-none focus:border-primary-500 cursor-pointer shadow-2xs">
+                 <option value="Semua">Semua Prioritas</option>
+                 <option value="Low">Rendah (Low)</option>
+                 <option value="Medium">Sedang (Medium)</option>
+                 <option value="High">Tinggi (High)</option>
+              </select>
+              <div className="flex items-center justify-between gap-1.5 bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 w-full shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Start</span>
+                <input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="bg-transparent border-none outline-none text-xs text-slate-700 font-bold cursor-pointer w-full text-right lg:text-left focus:ring-0 min-w-[100px]" />
+              </div>
+              <div className="flex items-center justify-between gap-1.5 bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 w-full shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">End</span>
+                <input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="bg-transparent border-none outline-none text-xs text-slate-700 font-bold cursor-pointer w-full text-right lg:text-left focus:ring-0 min-w-[100px]" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 shrink-0">
+              <button onClick={exportPDF} className="flex items-center justify-center gap-1.5 bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-semibold hover:bg-slate-50 shadow-2xs transition-all cursor-pointer">
+                PDF
+              </button>
+              <button onClick={exportCSV} className="flex items-center justify-center gap-1.5 bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-semibold hover:bg-slate-50 shadow-2xs transition-all cursor-pointer">
+                CSV
+              </button>
+            </div>
           </div>
           {canEdit && activeTab === 'tasks' && (
-            <button onClick={() => handleOpenModal()} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-primary-600 text-white px-3 py-1.5 rounded-lg text-[13px] font-semibold tracking-wide hover:bg-primary-700 transition-all shadow-[0_0.125rem_0.25rem_0_rgba(105,108,255,0.4)]">
+            <button onClick={() => handleOpenModal()} className="flex items-center justify-center gap-2 bg-primary-600 text-white px-4 py-2.5 rounded-xl text-[13px] font-semibold tracking-wide hover:bg-primary-700 transition-all shadow-[0_4px_12px_rgba(105,108,255,0.25)] shrink-0 mt-2 lg:mt-0 cursor-pointer">
               <Plus className="w-4 h-4" /> Task Baru
             </button>
           )}
@@ -527,11 +587,11 @@ export const ProjectManagement: React.FC = () => {
         </div>
       ) : (
         <div className="flex-1 overflow-x-auto pb-4 no-scrollbar -mx-4 sm:mx-0 px-4 sm:px-0 mt-4">
-          <div className="flex gap-4 h-full min-w-max lg:min-w-0 lg:grid lg:grid-cols-3">
+          <div className="flex gap-4 h-full min-w-max lg:min-w-0 lg:grid lg:grid-cols-3 items-start">
             {COLUMNS.map((col) => (
               <div 
                 key={col.id} 
-                className={cn("flex flex-col bg-slate-50/70 rounded-xl p-4 border-0 shadow-[0_4px_15px_rgba(0,0,0,0.015)] w-[280px] sm:w-[320px] lg:w-auto h-full max-h-[calc(100vh-280px)] transition-colors duration-200",
+                className={cn("flex flex-col bg-slate-50/70 rounded-xl p-4 border-0 shadow-[0_4px_15px_rgba(0,0,0,0.015)] w-[280px] sm:w-[320px] lg:w-auto h-[65vh] lg:h-[calc(100vh-280px)] min-h-[400px] transition-colors duration-200",
                     draggedTask && !projectTasks.find(t => t.id === draggedTask && t.status === col.id) ? "bg-primary-500/10 border-dashed border-primary-500" : ""
                  )}
                  onDragOver={handleDragOver}
@@ -616,7 +676,7 @@ export const ProjectManagement: React.FC = () => {
                 ))}
                 
                 {canEdit && (
-                  <button onClick={() => handleOpenModal(null, col.id)} className="w-full py-3 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 text-[13px] sm:text-[14px] font-bold hover:border-primary-600 hover:text-primary-600 bg-slate-50 hover:bg-white transition-all flex items-center justify-center gap-2">
+                  <button onClick={() => handleOpenModal(null, col.id)} className="w-full py-3 border-2 border-dashed border-slate-300/80 rounded-lg text-slate-500 text-[13px] sm:text-[14px] font-bold hover:border-primary-500 hover:text-primary-600 bg-slate-100/50 hover:bg-primary-50/50 transition-all flex items-center justify-center gap-2">
                     <Plus className="w-4 h-4" /> Tambah Task
                   </button>
                 )}
@@ -628,24 +688,29 @@ export const ProjectManagement: React.FC = () => {
       )}
       
       {totalPages > 1 && activeTab === 'tasks' && (
-        <div className="mt-4 flex items-center justify-center gap-2 pb-4">
-           <button 
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-           >
-             Prev
-           </button>
-           <span className="text-sm font-medium text-slate-600 px-2">
-             Hal {currentPage} dari {totalPages}
-           </span>
-           <button 
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-           >
-             Next
-           </button>
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200/50 shadow-xs w-full">
+          <div className="text-xs sm:text-sm text-slate-500 font-medium">
+            Menampilkan {Math.min(fullyFilteredProjectTasks.length, (currentPage - 1) * ITEMS_PER_PAGE + 1)} sampai {Math.min(fullyFilteredProjectTasks.length, currentPage * ITEMS_PER_PAGE)} dari {fullyFilteredProjectTasks.length} data
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button 
+               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+               disabled={currentPage === 1}
+               className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+               Sebelumnya
+            </button>
+            <div className="flex items-center gap-1 flex-wrap">
+              {renderPageNumbers()}
+            </div>
+            <button 
+               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+               disabled={currentPage === totalPages}
+               className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+               Berikutnya
+            </button>
+          </div>
         </div>
       )}
     </div>

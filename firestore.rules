@@ -70,7 +70,7 @@ service cloud.firestore {
             && data.status in ['Persiapan', 'Pelaksanaan', 'Pembinaan'];
       }
 
-      allow read: if isSignedIn();
+      allow read: if true;
       allow create: if hasRole(['superadmin', 'admin_pusat']) 
                   && isValidId(projectId)
                   && isValidProject(incoming());
@@ -120,12 +120,24 @@ service cloud.firestore {
             && data.url is string;
       }
 
-      allow read: if isSignedIn();
+      allow read: if true;
       allow create: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah'])
                   && isValidId(documentId)
                   && isValidDocument(incoming());
       allow update: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah', 'pimpinan'])
                   && isValidDocument(incoming());
+      allow delete: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah', 'pimpinan']);
+    }
+
+    // PROJECT DOCUMENTS
+    match /project_documents/{docId} {
+      allow read: if isSignedIn();
+      allow create: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah'])
+                  && isValidId(docId)
+                  && incoming().projectId is string
+                  && incoming().name is string
+                  && incoming().url is string;
+      allow update: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah', 'pimpinan']);
       allow delete: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah', 'pimpinan']);
     }
 
@@ -157,7 +169,7 @@ service cloud.firestore {
     // COMPLAINTS
     match /complaints/{id} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn();
+      allow create: if true;
       allow update: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah']);
       allow delete: if hasRole(['superadmin', 'admin_pusat', 'admin_daerah']);
     }
